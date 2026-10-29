@@ -42,7 +42,7 @@ describe('Phase 2: Repository Layer Contract & Implementations', () => {
   });
 
   it('SupabaseRepository gracefully falls back to LocalSeedRepository when unconfigured', async () => {
-    const supabaseRepo = new SupabaseRepository();
+    const supabaseRepo = new SupabaseRepository(null, null, { forceUnconfigured: true });
     expect(supabaseRepo.isConfigured).toBe(false);
 
     const restaurants = await supabaseRepo.getRestaurants();
@@ -164,3 +164,4 @@ describe('Phase 2: End-to-End Pipeline Integration Test on Demo Seed', () => {
     });
   });
 });
+

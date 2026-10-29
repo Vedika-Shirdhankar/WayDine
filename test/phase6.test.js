@@ -109,6 +109,25 @@ function createMockSupabaseClient(options = {}) {
           });
           return builder;
         },
+        update(data) {
+          const updateData = data;
+          return {
+            eq(col, val) {
+              if (tables[tableName]) {
+                tables[tableName] = tables[tableName].map(row => {
+                  if (row[col] === val) {
+                    return { ...row, ...updateData };
+                  }
+                  return row;
+                });
+              }
+              return Promise.resolve({ error: null });
+            },
+            then(resolve, reject) {
+              return Promise.resolve({ error: null }).then(resolve, reject);
+            }
+          };
+        },
         upsert(data, conflictOpts = {}) {
           const items = Array.isArray(data) ? data : [data];
           tables[tableName] = tables[tableName] || [];
@@ -300,7 +319,7 @@ describe('Phase 6: Supabase Setup & Automatic Local Fallback', () => {
     const repo = getRepository({ forceLocal: true });
     expect(repo).toBeInstanceOf(LocalSeedRepository);
 
-    const status = getDataSourceStatus();
+    const status = getDataSourceStatus({ forceLocal: true });
     expect(status.badgeText).toBe('Sample/Demo (local)');
   });
 

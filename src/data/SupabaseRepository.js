@@ -15,14 +15,19 @@ export class SupabaseRepository extends IWayDineRepository {
   /**
    * @param {import('@supabase/supabase-js').SupabaseClient} [client]
    * @param {IWayDineRepository} [fallback]
+   * @param {{ forceUnconfigured?: boolean }} [options]
    */
-  constructor(client = null, fallback = null) {
+  constructor(client = null, fallback = null, options = {}) {
     super();
     this.fallback = fallback || new LocalSeedRepository();
-    this.supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
-    this.supabaseAnonKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
+    this.supabaseUrl = options.forceUnconfigured ? null : getEnvVar('VITE_SUPABASE_URL');
+    this.supabaseAnonKey = options.forceUnconfigured ? null : getEnvVar('VITE_SUPABASE_ANON_KEY');
 
-    if (client) {
+    if (options.forceUnconfigured) {
+      this.client = null;
+      this.isConfigured = false;
+      this._isMock = false;
+    } else if (client) {
       this.client = client;
       this.isConfigured = true;
       this._isMock = true;
@@ -420,8 +425,25 @@ export class SupabaseRepository extends IWayDineRepository {
         updated_at: new Date().toISOString()
       };
 
-      const { error } = await this.client.from('user_preferences').upsert(row, { onConflict: 'user_id' });
-      if (error) throw error;
+      // Check if user preferences record already exists for target user
+      const { data: existing } = await this.client
+        .from('user_preferences')
+        .select('id')
+        .eq('user_id', targetId)
+        .maybeSingle();
+
+      if (existing && existing.id) {
+        const { error: updateErr } = await this.client
+          .from('user_preferences')
+          .update(row)
+          .eq('id', existing.id);
+        if (updateErr) throw updateErr;
+      } else {
+        const { error: insertErr } = await this.client
+          .from('user_preferences')
+          .insert(row);
+        if (insertErr) throw insertErr;
+      }
 
       return { success: true };
     } catch (err) {

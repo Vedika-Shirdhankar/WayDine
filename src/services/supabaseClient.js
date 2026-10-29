@@ -50,8 +50,8 @@ export function isSupabaseConfigured() {
  * @returns {import('@supabase/supabase-js').SupabaseClient | null}
  */
 export function createSupabaseClient(urlOverride, keyOverride) {
-  const url = urlOverride || getEnvVar('VITE_SUPABASE_URL');
-  const anonKey = keyOverride || getEnvVar('VITE_SUPABASE_ANON_KEY');
+  const url = urlOverride !== undefined ? urlOverride : getEnvVar('VITE_SUPABASE_URL');
+  const anonKey = keyOverride !== undefined ? keyOverride : getEnvVar('VITE_SUPABASE_ANON_KEY');
 
   const isValid = Boolean(
     url &&
