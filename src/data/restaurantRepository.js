@@ -105,9 +105,9 @@ export async function getDemoParameters() {
  * Returns provenance badge information for the UI.
  * Badges: "Database (Supabase)" or "Sample/Demo (local)"
  */
-export function getDataSourceStatus() {
-  const repo = getRepository();
-  const isSupabase = repo instanceof SupabaseRepository && repo.isConfigured && repo.isReachable;
+export function getDataSourceStatus(options = {}) {
+  const repo = getRepository(options);
+  const isSupabase = !options.forceLocal && repo instanceof SupabaseRepository && repo.isConfigured && repo.isReachable;
   const badge = isSupabase ? 'Database (Supabase)' : 'Sample/Demo (local)';
 
   return {
