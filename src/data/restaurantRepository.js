@@ -5,6 +5,8 @@
 
 import { LocalSeedRepository } from './LocalSeedRepository.js';
 import { SupabaseRepository } from './SupabaseRepository.js';
+import sampleRoutes from './sampleRoutes.json';
+import demoSeedData from './mumbaiPuneSeed.json' with { type: 'json' };
 
 let defaultRepositoryInstance = null;
 
@@ -22,7 +24,38 @@ export function getRepository() {
 }
 
 export async function getRestaurants(options = {}) {
-  return getRepository().getRestaurants(options);
+  const repo = getRepository();
+  return repo.getRestaurants(options);
+}
+
+export async function getRestaurantById(id) {
+  const restaurants = await getRestaurants();
+  return restaurants.find(r => r.id === id) || null;
+}
+
+export async function getRoutes() {
+  // Combine Mumbai-Pune demo route with sample highway corridors
+  const demo = demoSeedData.demoRoute;
+  const list = [
+    {
+      id: demo.id,
+      name: demo.name,
+      description: demo.description,
+      startPoint: demo.origin,
+      endPoint: demo.destination,
+      totalDistanceMeters: demo.totalDistanceMeters,
+      totalDurationSeconds: demo.totalDurationSeconds,
+      coordinates: demo.coordinates,
+      source: demo.dataSource
+    },
+    ...sampleRoutes
+  ];
+  return list;
+}
+
+export async function getRouteById(routeId) {
+  const routes = await getRoutes();
+  return routes.find(r => r.id === routeId) || routes[0];
 }
 
 export async function getRoadGraph() {
@@ -34,7 +67,7 @@ export async function getDemoRoute() {
   if (typeof repo.getDemoRoute === 'function') {
     return repo.getDemoRoute();
   }
-  return null;
+  return demoSeedData.demoRoute;
 }
 
 export async function getDemoParameters() {
@@ -42,7 +75,7 @@ export async function getDemoParameters() {
   if (typeof repo.getDemoParameters === 'function') {
     return repo.getDemoParameters();
   }
-  return null;
+  return demoSeedData.fixedDemoParameters;
 }
 
 export function getDataSourceStatus() {
