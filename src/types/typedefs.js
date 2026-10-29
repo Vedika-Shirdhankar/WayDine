@@ -1,8 +1,11 @@
 /**
  * @file typedefs.js
- * Comprehensive JSDoc type definitions for WayDine route intelligence engine.
- * Units: Distance in meters (distanceMeters), Duration in seconds (durationSeconds).
- * Standard coordinate order: [latitude, longitude].
+ * Comprehensive JSDoc type definitions for the WayDine core engine (Phase 1).
+ * Units:
+ *   - Coordinates: [latitude, longitude] in degrees
+ *   - Distances: meters
+ *   - Durations / Times: seconds (or Date instances where specified)
+ *   - Weights: sum to 100
  */
 
 /**
@@ -12,122 +15,136 @@
  */
 
 /**
- * @typedef {Object} RouteManeuver
- * @property {string} type - e.g. "turn", "new name", "depart", "arrive", "on ramp", "off ramp"
- * @property {string} [modifier] - e.g. "left", "right", "straight", "slight right", "uturn"
- * @property {LatLng} location - [lat, lng]
+ * Route segment connecting two consecutive waypoints along a route.
+ * @typedef {Object} RouteSegment
+ * @property {LatLng} start - [lat, lng] of segment origin
+ * @property {LatLng} end - [lat, lng] of segment destination
+ * @property {number} distanceMeters - Distance of this segment in meters
+ * @property {number} cumulativeDistanceMeters - Distance from route start to segment end in meters
+ * @property {number} segmentIndex - 0-based index of segment in route
+ * @property {number} bearing - Initial bearing in degrees (0-360)
  */
 
 /**
- * @typedef {Object} RouteStep
- * @property {string} instruction
- * @property {number} distanceMeters
- * @property {number} durationSeconds
- * @property {string} name - Road or street name
- * @property {RouteManeuver} maneuver
+ * Road network node representing an intersection, ramp, or access point.
+ * @typedef {Object} RoadNode
+ * @property {string} id - Unique node identifier
+ * @property {LatLng} location - [latitude, longitude]
+ * @property {string} [name] - Human readable descriptor
  */
 
 /**
- * Planned driving route.
- * @typedef {Object} Route
- * @property {string} id - Unique route ID
- * @property {string} name - e.g. "San Francisco to Monterey (CA-1 / US-101)"
- * @property {LatLng[]} coordinates - Dense polyline array of [lat, lng] coordinates
- * @property {number} totalDistanceMeters - Total route distance in meters
- * @property {number} totalDurationSeconds - Total driving duration in seconds
- * @property {RouteStep[]} steps - Turn-by-turn steps
- * @property {'Live (OSRM/OSM)' | 'Sample/Demo'} source - Provenance label
+ * Directed edge in the road network graph.
+ * @typedef {Object} RoadEdge
+ * @property {string} from - Source node ID
+ * @property {string} to - Destination node ID
+ * @property {number} distanceMeters - Length of edge in meters
+ * @property {number} durationSeconds - Traversal time in seconds
+ * @property {number} [speedKmh] - Speed limit in km/h
+ * @property {boolean} [oneWay=true] - Whether edge is one-way
+ * @property {boolean} [isUTurn=false] - Whether this edge represents a U-turn
+ * @property {boolean} [isTurn=false] - Whether this edge involves a turn
+ * @property {boolean} [isForbidden=false] - Whether this maneuver is prohibited
  */
 
 /**
- * Opening hours specification for a restaurant.
- * Times in 24-hour HH:MM format.
- * @typedef {Object} OpeningHours
- * @property {string} open - e.g. "07:00"
- * @property {string} close - e.g. "22:00"
- * @property {number[]} [daysOfWeek] - 0 (Sun) - 6 (Sat). Defaults to all days.
+ * Road network graph structure.
+ * @typedef {Object} RoadGraph
+ * @property {Map<string, RoadNode>} nodes - Node map by ID
+ * @property {Map<string, RoadEdge[]>} adjacencyList - Edge list by node ID
+ * @property {Set<string>} [forbiddenTurns] - Set of "fromNode->viaNode->toNode" strings for turn restrictions
  */
 
 /**
- * Road accessibility classification:
- * - 'GREEN': Direct off-ramp / service road / same side, no hazardous U-turn
- * - 'YELLOW': Overpass or traffic light left turn, minor detour (< 5 mins)
- * - 'RED': Requires cross-median U-turn or high-friction detour (> 10 mins)
- * - 'Unverified': Not verified by local road network topology
- * @typedef {'GREEN' | 'YELLOW' | 'RED' | 'Unverified'} AccessibilityClass
+ * Designated vehicular access point for a restaurant from the road network.
+ * @typedef {Object} AccessPoint
+ * @property {string} id - Access point identifier
+ * @property {LatLng} location - [lat, lng] of entry driveway / off-ramp
+ * @property {string} roadNodeId - Nearest road network node ID
+ * @property {string} [rejoinNodeId] - Road network node ID for re-entering the route
  */
 
 /**
- * Road side relative to vehicle direction of travel.
- * @typedef {'same_side' | 'opposite_side' | 'median'} RoadSide
+ * Food service window configuration.
+ * @typedef {Object} FoodWindow
+ * @property {string} name - e.g. "Breakfast", "Lunch", "Snacks", "Dinner"
+ * @property {number} startHour - 0-23
+ * @property {number} endHour - 0-23
+ * @property {string[]} categories - Categories served in this window
  */
 
 /**
- * Candidate restaurant along corridor.
+ * Candidate restaurant for pitstop intelligence ranking.
  * @typedef {Object} Restaurant
  * @property {string} id
  * @property {string} name
- * @property {LatLng} location - [latitude, longitude]
- * @property {string} address
- * @property {number} rating - 1.0 to 5.0
- * @property {number} reviewCount
- * @property {'$' | '$$' | '$$$' | '$$$$'} priceRange
- * @property {string} cuisineType
- * @property {string[]} categories - e.g. ["Breakfast", "Coffee", "Quick Bites", "Burgers"]
- * @property {OpeningHours} openingHours
- * @property {number} averageDineMinutes - Typical stop time (e.g. 15 for drive-thru, 45 for dine-in)
- * @property {boolean} hasDriveThru
- * @property {boolean} isVegetarianFriendly
- * @property {string} highwayExit - Nearest highway exit or mile marker
- * @property {RoadSide} roadSide
- * @property {AccessibilityClass} accessClass
- * @property {string} [accessReason] - Explaining why GREEN/YELLOW/RED/Unverified
- * @property {'Database' | 'Sample/Demo' | 'Live (OSRM/OSM)'} source
+ * @property {LatLng} location - [lat, lng]
+ * @property {AccessPoint} [accessPoint] - Specific vehicular access point
+ * @property {number} [rating] - Rating 1.0 - 5.0
+ * @property {'$' | '$$' | '$$$' | '$$$$'} [priceRange]
+ * @property {string} [cuisineType]
+ * @property {string[]} [categories] - e.g. ["Burgers", "Coffee", "Breakfast"]
+ * @property {string[]} [dietaryOptions] - e.g. ["Vegetarian", "Vegan", "Halal"]
+ * @property {{ open: string, close: string }} [openingHours] - "HH:MM" 24h format
+ * @property {FoodWindow[]} [customFoodWindows] - Custom meal windows overriding defaults
+ * @property {'Database' | 'Sample/Demo' | 'Live (OSRM/OSM)'} [source]
  */
 
 /**
- * Calculated detour metrics using road graph or verified paths.
- * @typedef {Object} DetourMetrics
- * @property {number} detourDistanceMeters - Additional road distance added to journey (round-trip)
- * @property {number} detourDurationSeconds - Additional driving time added to journey (round-trip)
- * @property {number} uTurnCount - Number of U-turns required (heavily penalized)
- * @property {number} turnCount - Number of turns (left/right off highway)
- * @property {number} uTurnPenaltySeconds - Total time penalty added due to U-turns
- * @property {number} detourPenaltyScore - Normalized score 0-100 (100 = 0 detour, 0 = severe detour)
- * @property {LatLng[]} detourPathCoordinates - Road path geometry to & from restaurant
- * @property {LatLng} nearestRoutePoint - Point on route where vehicle diverges
- * @property {number} distanceAlongRouteMeters - Distance from start of route to exit point
+ * Accessibility classification.
+ * - 'GREEN': Reachable on current carriageway, no U-turn
+ * - 'YELLOW': Junction diversion or short legal U-turn
+ * - 'RED': Prohibited crossing, median barrier, or backward travel
+ * - 'UNVERIFIED': No road-graph connectivity proof
+ * @typedef {'GREEN' | 'YELLOW' | 'RED' | 'UNVERIFIED'} AccessibilityClass
  */
 
 /**
- * Food and meal availability evaluation at projected arrival time.
- * @typedef {Object} FoodSuitability
- * @property {string} projectedEta - ISO timestamp or formatted local time of arrival
- * @property {number} etaSecondsFromStart - Seconds from departure
- * @property {boolean} isCurrentlyOpen - Is open right now
- * @property {boolean} isOpenAtEta - Is open when driver actually reaches the restaurant
- * @property {string} mealWindow - "Breakfast" | "Lunch" | "Afternoon Snack" | "Dinner" | "Late Night"
- * @property {string[]} availableCategoriesAtEta - Categories actively served during this window
- * @property {boolean} requestedCategoryAvailable - Matches user's preferred category at ETA
- * @property {number} timingMatchScore - Normalized score 0-100
- * @property {string} statusMessage - Clear human-readable explanation
+ * Detour calculation result from road graph Dijkstra.
+ * @typedef {Object} DetourResult
+ * @property {number} detourDistanceMeters - Net additional distance in meters
+ * @property {number} detourDurationSeconds - Net additional driving time in seconds
+ * @property {number} turnCount - Extra non-highway turns
+ * @property {number} uTurnCount - Extra U-turns
+ * @property {'Excellent' | 'Very Good' | 'Moderate' | 'High' | 'Excessive'} detourClassification
+ * @property {AccessibilityClass} accessibilityClass
+ * @property {string[]} pathNodeIds - Dijkstra traversed node path
+ * @property {string} [accessibilityReason] - Explanation
  */
 
 /**
- * Complete pitstop recommendation ranking.
- * @typedef {Object} PitstopRecommendation
+ * Final recommendation result for a candidate restaurant.
+ * @typedef {Object} RecommendationResult
  * @property {Restaurant} restaurant
- * @property {DetourMetrics} detourMetrics
- * @property {FoodSuitability} foodSuitability
- * @property {number} finalScore - Deterministic overall score 0-100
- * @property {Object} scoreBreakdown
- * @property {number} scoreBreakdown.detourScore - Weighted component
- * @property {number} scoreBreakdown.accessScore - Road accessibility component
- * @property {number} scoreBreakdown.ratingScore - Quality/rating component
- * @property {number} scoreBreakdown.foodEtaScore - ETA & meal availability component
- * @property {number} scoreBreakdown.preferenceBonus - User filter/category bonus
+ * @property {number} finalScore - Normalized composite score 0-100
+ * @property {Object} scoreComponents - Each component normalized 0-100
+ * @property {number} scoreComponents.detourEfficiency - 30% weight
+ * @property {number} scoreComponents.directionCompatibility - 25% weight
+ * @property {number} scoreComponents.roadAccessibility - 20% weight
+ * @property {number} scoreComponents.foodAvailability - 15% weight
+ * @property {number} scoreComponents.timeCompatibility - 10% weight
+ * @property {DetourResult} detourResult
+ * @property {Date} eta
+ * @property {string[]} activeCategoriesAtEta
+ * @property {string} explanation - Templated deterministic rationale
  * @property {number} rank - 1-based rank
- * @property {string} rationale - Clear explanation of rank & convenience
+ */
+
+/**
+ * Engine configuration options.
+ * @typedef {Object} EngineConfig
+ * @property {number} [corridorMeters=200] - Corridor width candidate selection
+ * @property {number} [behindToleranceMeters=50] - Buffer for ahead-of-vehicle check
+ * @property {number} [maxDetourMeters=2000] - Hard constraint detour limit
+ * @property {number} [uTurnPenaltyMeters=1000] - Penalty meters equivalent for U-turns
+ * @property {number} [uTurnPenaltySeconds=240] - Penalty seconds for U-turns
+ * @property {number} [turnPenaltySeconds=30] - Penalty seconds for standard turns
+ * @property {Object} [weights] - Scoring component weights summing to 100
+ * @property {number} [weights.detourEfficiency=30]
+ * @property {number} [weights.directionCompatibility=25]
+ * @property {number} [weights.roadAccessibility=20]
+ * @property {number} [weights.foodAvailability=15]
+ * @property {number} [weights.timeCompatibility=10]
  */
 
 export {};

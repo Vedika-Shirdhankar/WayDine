@@ -1,191 +1,202 @@
 /**
  * @file foodRulesEngine.js
- * Implements Hackathon Task 3: ETA-based food recommendation.
- * Evaluates per-restaurant ETA, operational hours, meal service windows,
- * and category availability at projected arrival time.
- * Pure deterministic rule engine - NO AI/LLM inference.
+ * ETA computation, operating hours validation, meal window management, and food suitability matching.
  */
 
-/**
- * Standard meal service windows based on 24-hour clock.
- */
-export const MEAL_WINDOWS = {
-  BREAKFAST: {
+export const DEFAULT_MEAL_WINDOWS = [
+  {
+    name: 'Breakfast',
     id: 'Breakfast',
     startHour: 6,
     endHour: 11,
-    name: 'Breakfast Window (6:00 AM - 11:00 AM)',
+    categories: ['Breakfast', 'Coffee', 'Bakery', 'Bagels', 'Pancakes', 'Quick Bites'],
     suitableCategories: ['Breakfast', 'Coffee', 'Bakery', 'Bagels', 'Pancakes', 'Quick Bites', 'Drive-Thru']
   },
-  LUNCH: {
+  {
+    name: 'Lunch',
     id: 'Lunch',
     startHour: 11,
     endHour: 15,
-    name: 'Lunch Window (11:00 AM - 3:00 PM)',
+    categories: ['Lunch', 'Burgers', 'Sandwiches', 'Salads', 'Bowls', 'Pizza', 'Fast Food', 'Quick Bites'],
     suitableCategories: ['Burgers', 'Sandwiches', 'Salads', 'Bowls', 'Pizza', 'Quick Bites', 'Mexican', 'Fast Food', 'Drive-Thru']
   },
-  AFTERNOON_SNACK: {
+  {
+    name: 'Snacks',
     id: 'Afternoon Snack / Coffee',
     startHour: 15,
     endHour: 18,
-    name: 'Afternoon Snack Window (3:00 PM - 6:00 PM)',
+    categories: ['Snacks', 'Coffee', 'Bakery', 'Desserts', 'Smoothies', 'Tea', 'Quick Bites'],
     suitableCategories: ['Coffee', 'Bakery', 'Desserts', 'Smoothies', 'Quick Bites', 'Tea', 'Drive-Thru']
   },
-  DINNER: {
+  {
+    name: 'Dinner',
     id: 'Dinner',
     startHour: 18,
-    endHour: 22,
-    name: 'Dinner Window (6:00 PM - 10:00 PM)',
+    endHour: 23,
+    categories: ['Dinner', 'Steakhouse', 'Italian', 'Pizza', 'Burgers', 'Seafood', 'Fine Dining'],
     suitableCategories: ['Dinner', 'Steakhouse', 'Italian', 'Wood-fired Pizza', 'Burgers', 'Seafood', 'Mexican', 'Fine Dining']
   },
-  LATE_NIGHT: {
+  {
+    name: 'Late Night',
     id: 'Late Night',
-    startHour: 22,
+    startHour: 23,
     endHour: 6,
-    name: 'Late Night Window (10:00 PM - 6:00 AM)',
+    categories: ['Late Night', '24/7 Diner', 'Fast Food', 'Burgers', 'Pizza'],
     suitableCategories: ['24/7 Diner', 'Late Night Bites', 'Fast Food', 'Drive-Thru', 'Burgers', 'Pizza']
   }
-};
+];
 
-/**
- * Parses "HH:MM" string into minutes from midnight (0 - 1439).
- * @param {string} timeStr - "HH:MM"
- * @returns {number} Minutes
- */
-export function parseTimeToMinutes(timeStr) {
+export function computeEta(departureTime, timeToAccessPointSeconds, detourTimeSeconds = 0) {
+  if (!(departureTime instanceof Date) || Number.isNaN(departureTime.getTime())) {
+    throw new TypeError('[foodRulesEngine] departureTime must be a valid Date object.');
+  }
+  const totalOffsetMs = (timeToAccessPointSeconds + detourTimeSeconds) * 1000;
+  return new Date(departureTime.getTime() + totalOffsetMs);
+}
+
+export function timeStringToMinutes(timeStr) {
   if (typeof timeStr !== 'string' || !timeStr.includes(':')) {
-    throw new TypeError(`[foodRulesEngine] Invalid time format: ${timeStr}. Expected "HH:MM"`);
+    throw new TypeError(`[foodRulesEngine] Invalid time string: ${timeStr}. Expected "HH:MM".`);
   }
   const [hStr, mStr] = timeStr.split(':');
   const h = parseInt(hStr, 10);
   const m = parseInt(mStr, 10);
   if (Number.isNaN(h) || Number.isNaN(m) || h < 0 || h > 23 || m < 0 || m > 59) {
-    throw new RangeError(`[foodRulesEngine] Invalid hour/minute: ${timeStr}`);
+    throw new RangeError(`[foodRulesEngine] Time values out of bounds: ${timeStr}`);
   }
   return h * 60 + m;
 }
 
-/**
- * Checks if a given time falls within opening hours.
- * Handles shifts that cross midnight (e.g. open 20:00, close 03:00).
- *
- * @param {import('../types/typedefs.js').OpeningHours} openingHours
- * @param {Date} targetTime
- * @returns {boolean}
- */
-export function isWithinOpeningHours(openingHours, targetTime) {
-  if (!openingHours || !openingHours.open || !openingHours.close) {
-    // If no explicit hours, consider unverified/fallback open
-    return true;
-  }
-  if (!(targetTime instanceof Date) || Number.isNaN(targetTime.getTime())) {
-    throw new TypeError('[foodRulesEngine] targetTime must be a valid Date instance.');
+export const parseTimeToMinutes = timeStringToMinutes;
+
+export function isOpenAt(eta, openingTime, closingTime) {
+  if (!(eta instanceof Date) || Number.isNaN(eta.getTime())) {
+    throw new TypeError('[foodRulesEngine] eta must be a valid Date.');
   }
 
-  // Check day of week if specified
-  if (Array.isArray(openingHours.daysOfWeek)) {
-    const day = targetTime.getDay();
-    if (!openingHours.daysOfWeek.includes(day)) {
-      return false;
-    }
-  }
-
-  const openMinutes = parseTimeToMinutes(openingHours.open);
-  const closeMinutes = parseTimeToMinutes(openingHours.close);
-  const targetMinutes = targetTime.getHours() * 60 + targetTime.getMinutes();
+  const openMinutes = timeStringToMinutes(openingTime);
+  const closeMinutes = timeStringToMinutes(closingTime);
+  const targetMinutes = eta.getHours() * 60 + eta.getMinutes();
 
   if (openMinutes <= closeMinutes) {
-    // Normal same-day operating hours (e.g. 07:00 to 22:00)
     return targetMinutes >= openMinutes && targetMinutes <= closeMinutes;
   } else {
-    // Crosses midnight (e.g. 21:00 to 04:00)
     return targetMinutes >= openMinutes || targetMinutes <= closeMinutes;
   }
 }
 
-/**
- * Determines the active meal window name for a given arrival time.
- * @param {Date} arrivalTime
- * @returns {typeof MEAL_WINDOWS[keyof typeof MEAL_WINDOWS]}
- */
-export function getMealWindow(arrivalTime) {
-  if (!(arrivalTime instanceof Date) || Number.isNaN(arrivalTime.getTime())) {
-    throw new TypeError('[foodRulesEngine] arrivalTime must be a valid Date instance.');
+export function isWithinOpeningHours(openingHours, targetTime) {
+  if (!openingHours || !openingHours.open || !openingHours.close) {
+    return true;
   }
-
-  const hour = arrivalTime.getHours();
-
-  if (hour >= 6 && hour < 11) return MEAL_WINDOWS.BREAKFAST;
-  if (hour >= 11 && hour < 15) return MEAL_WINDOWS.LUNCH;
-  if (hour >= 15 && hour < 18) return MEAL_WINDOWS.AFTERNOON_SNACK;
-  if (hour >= 18 && hour < 22) return MEAL_WINDOWS.DINNER;
-  return MEAL_WINDOWS.LATE_NIGHT;
+  return isOpenAt(targetTime, openingHours.open, openingHours.close);
 }
 
-/**
- * Formats a Date object into a readable local 12-hour time string "h:mm A".
- * @param {Date} date
- * @returns {string}
- */
+export function getMealWindowAt(eta, customWindows = null) {
+  if (!(eta instanceof Date) || Number.isNaN(eta.getTime())) {
+    throw new TypeError('[foodRulesEngine] eta must be a valid Date.');
+  }
+
+  const windows = Array.isArray(customWindows) && customWindows.length > 0
+    ? customWindows
+    : DEFAULT_MEAL_WINDOWS;
+
+  const hour = eta.getHours();
+
+  for (const w of windows) {
+    if (w.startHour <= w.endHour) {
+      if (hour >= w.startHour && hour < w.endHour) {
+        return w;
+      }
+    } else {
+      if (hour >= w.startHour || hour < w.endHour) {
+        return w;
+      }
+    }
+  }
+
+  return windows[0];
+}
+
+export const getMealWindow = getMealWindowAt;
+
+export function getActiveCategories(eta, restaurant) {
+  if (!restaurant) return [];
+
+  const window = getMealWindowAt(eta, restaurant.customFoodWindows);
+  const restaurantCategories = Array.isArray(restaurant.categories) ? restaurant.categories : [];
+
+  const matched = restaurantCategories.filter(cat =>
+    window.categories.some(wc => wc.toLowerCase() === cat.toLowerCase()) ||
+    (window.suitableCategories && window.suitableCategories.some(sc => sc.toLowerCase() === cat.toLowerCase()))
+  );
+
+  return matched.length > 0 ? matched : restaurantCategories;
+}
+
+export function matchesDiet(restaurant, requiredDiet) {
+  if (!requiredDiet || requiredDiet.trim() === '') return true;
+  if (!restaurant) return false;
+
+  const target = requiredDiet.trim().toLowerCase();
+  const options = Array.isArray(restaurant.dietaryOptions) ? restaurant.dietaryOptions : [];
+  const categories = Array.isArray(restaurant.categories) ? restaurant.categories : [];
+
+  return options.some(opt => opt.toLowerCase().includes(target)) ||
+         categories.some(c => c.toLowerCase().includes(target));
+}
+
+export function matchesBudget(restaurant, maxPriceRange) {
+  if (!maxPriceRange) return true;
+  if (!restaurant || !restaurant.priceRange) return true;
+
+  const levels = { '$': 1, '$$': 2, '$$$': 3, '$$$$': 4 };
+  const restaurantLevel = levels[restaurant.priceRange] || 2;
+  const maxLevel = levels[maxPriceRange] || 4;
+
+  return restaurantLevel <= maxLevel;
+}
+
+export function matchesCuisine(restaurant, preferredCuisines) {
+  if (!preferredCuisines) return true;
+  const list = Array.isArray(preferredCuisines) ? preferredCuisines : [preferredCuisines];
+  if (list.length === 0 || list.every(c => !c || c === 'All')) return true;
+
+  if (!restaurant) return false;
+  const cuisine = (restaurant.cuisineType || '').toLowerCase();
+  const categories = (restaurant.categories || []).map(c => c.toLowerCase());
+
+  return list.some(pref => {
+    const p = pref.toLowerCase();
+    return cuisine.includes(p) || categories.some(c => c.includes(p));
+  });
+}
+
 export function formatTime12h(date) {
   let hours = date.getHours();
   const minutes = date.getMinutes();
   const ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12;
-  hours = hours ? hours : 12; // hour 0 is 12 AM
+  hours = hours ? hours : 12;
   const minutesStr = minutes < 10 ? '0' + minutes : minutes;
   return `${hours}:${minutesStr} ${ampm}`;
 }
 
-/**
- * Full ETA-based food suitability calculation for a candidate restaurant.
- *
- * @param {import('../types/typedefs.js').Restaurant} restaurant
- * @param {Date} departureDate - Vehicle trip start time
- * @param {number} travelDurationSecondsToPoint - Driving duration to restaurant
- * @param {string} [preferredCategory] - Optional user preference filter
- * @returns {import('../types/typedefs.js').FoodSuitability}
- */
-export function evaluateFoodSuitability(
-  restaurant,
-  departureDate,
-  travelDurationSecondsToPoint,
-  preferredCategory = ''
-) {
-  if (!restaurant) {
-    throw new TypeError('[foodRulesEngine] Invalid restaurant.');
-  }
-  if (!(departureDate instanceof Date) || Number.isNaN(departureDate.getTime())) {
-    throw new TypeError('[foodRulesEngine] departureDate must be a valid Date.');
-  }
-  if (typeof travelDurationSecondsToPoint !== 'number' || travelDurationSecondsToPoint < 0) {
-    throw new RangeError(`[foodRulesEngine] travelDurationSecondsToPoint must be non-negative. Received: ${travelDurationSecondsToPoint}`);
-  }
-
-  const arrivalTimestamp = departureDate.getTime() + travelDurationSecondsToPoint * 1000;
-  const arrivalDate = new Date(arrivalTimestamp);
+export function evaluateFoodSuitability(restaurant, departureDate, travelDurationSecondsToPoint, preferredCategory = '') {
+  const arrivalDate = computeEta(departureDate, travelDurationSecondsToPoint);
   const now = new Date();
 
   const isCurrentlyOpen = isWithinOpeningHours(restaurant.openingHours, now);
   const isOpenAtEta = isWithinOpeningHours(restaurant.openingHours, arrivalDate);
-  const mealWindow = getMealWindow(arrivalDate);
+  const mealWindow = getMealWindowAt(arrivalDate, restaurant.customFoodWindows);
 
-  const restaurantCategories = Array.isArray(restaurant.categories) ? restaurant.categories : [];
-  const availableCategoriesAtEta = restaurantCategories.filter(cat =>
-    mealWindow.suitableCategories.some(sc => sc.toLowerCase() === cat.toLowerCase())
-  );
-
+  const availableCategoriesAtEta = getActiveCategories(arrivalDate, restaurant);
   let requestedCategoryAvailable = true;
   if (preferredCategory && preferredCategory.trim() !== '') {
     const target = preferredCategory.trim().toLowerCase();
-    requestedCategoryAvailable = restaurantCategories.some(c => c.toLowerCase().includes(target));
+    requestedCategoryAvailable = (restaurant.categories || []).some(c => c.toLowerCase().includes(target));
   }
 
-  // Scoring logic:
-  // - Open at ETA: +60 points
-  // - Category fits meal window: +25 points
-  // - Requested category matched: +15 points
-  // - Closed at ETA: 0 points (or heavy penalty)
   let timingMatchScore = 0;
   let statusMessage = '';
 
@@ -197,18 +208,10 @@ export function evaluateFoodSuitability(
     statusMessage = `Closed at projected ETA ${formatTime12h(arrivalDate)} ${hours}`;
   } else {
     timingMatchScore = 60;
-
-    if (availableCategoriesAtEta.length > 0) {
-      timingMatchScore += 25;
-    } else {
-      timingMatchScore += 10;
-    }
-
-    if (requestedCategoryAvailable) {
-      timingMatchScore += 15;
-    }
-
-    statusMessage = `Open at ETA ${formatTime12h(arrivalDate)} (${mealWindow.id} Menu Active)`;
+    if (availableCategoriesAtEta.length > 0) timingMatchScore += 25;
+    else timingMatchScore += 10;
+    if (requestedCategoryAvailable) timingMatchScore += 15;
+    statusMessage = `Open at ETA ${formatTime12h(arrivalDate)} (${mealWindow.name || mealWindow.id} Menu Active)`;
   }
 
   return {
@@ -216,7 +219,7 @@ export function evaluateFoodSuitability(
     etaSecondsFromStart: travelDurationSecondsToPoint,
     isCurrentlyOpen,
     isOpenAtEta,
-    mealWindow: mealWindow.id,
+    mealWindow: mealWindow.name || mealWindow.id,
     availableCategoriesAtEta,
     requestedCategoryAvailable,
     timingMatchScore: Math.min(100, Math.round(timingMatchScore)),

@@ -1,94 +1,200 @@
 /**
  * @file detourCalculator.js
- * Implements Hackathon Task 2: Detour and U-turn minimization.
- * Calculates extra road network distance, travel duration, turn friction,
- * and heavy U-turn penalties.
- * Deterministic scoring based strictly on actual road network traversal.
+ * Graph-based detour distance and time computation using Dijkstra.
+ * Enforces turn penalties, U-turn penalties, boundary-tested detour classification,
+ * and accessibility classification.
  */
 
-import { haversineDistanceMeters, validateLatLng } from './geoUtils.js';
-import { dijkstraShortestPath, MANEUVER_PENALTIES, RoadNetworkGraph } from './shortestPath.js';
+import { dijkstra, MANEUVER_PENALTIES, RoadNetworkGraph } from './shortestPath.js';
+import { haversine } from './geoUtils.js';
+
+export const DEFAULT_DETOUR_THRESHOLDS = {
+  excellent: 300,
+  veryGood: 700,
+  moderate: 1500,
+  high: 3000
+};
 
 /**
- * Standard average speed on off-highway local connector roads in km/h.
- */
-const LOCAL_ROAD_SPEED_KMH = 40;
-
-/**
- * Normalizes a detour duration into an efficiency score from 0 to 100.
- * A 0-minute detour scores 100.
- * A 5-minute detour scores ~75.
- * A 10-minute detour scores ~45.
- * A 20-minute detour scores ~10.
- * > 25 minutes detour scores 0.
+ * Classifies detour extra distance into human categories with configurable thresholds.
  *
- * @param {number} totalDetourDurationSeconds
- * @returns {number} Score between 0 and 100
+ * @param {number} detourMeters
+ * @param {typeof DEFAULT_DETOUR_THRESHOLDS} [thresholds]
+ * @returns {'Excellent' | 'Very Good' | 'Moderate' | 'High' | 'Excessive'}
+ */
+export function classifyDetour(detourMeters, thresholds = DEFAULT_DETOUR_THRESHOLDS) {
+  const t = { ...DEFAULT_DETOUR_THRESHOLDS, ...thresholds };
+
+  if (detourMeters <= t.excellent) {
+    return 'Excellent';
+  } else if (detourMeters <= t.veryGood) {
+    return 'Very Good';
+  } else if (detourMeters <= t.moderate) {
+    return 'Moderate';
+  } else if (detourMeters <= t.high) {
+    return 'High';
+  } else {
+    return 'Excessive';
+  }
+}
+
+/**
+ * Classifies road accessibility based on road graph paths.
+ *
+ * @param {Object} params
+ * @param {boolean} params.hasGraphData
+ * @param {any} [params.path1]
+ * @param {any} [params.path2]
+ * @param {boolean} [params.prohibitedCrossing=false]
+ * @returns {import('../types/typedefs.js').AccessibilityClass}
+ */
+export function classifyAccessibility({
+  hasGraphData,
+  path1,
+  path2,
+  prohibitedCrossing = false
+}) {
+  if (!hasGraphData) {
+    return 'UNVERIFIED';
+  }
+
+  if (prohibitedCrossing || !path1 || !path2) {
+    return 'RED';
+  }
+
+  const totalUTurns = (path1.uTurns || path1.uTurnCount || 0) + (path2.uTurns || path2.uTurnCount || 0);
+  const totalTurns = (path1.turns || path1.turnCount || 0) + (path2.turns || path2.turnCount || 0);
+
+  if (totalUTurns > 1) {
+    return 'RED';
+  }
+
+  if (totalUTurns === 1 || totalTurns > 2) {
+    return 'YELLOW';
+  }
+
+  return 'GREEN';
+}
+
+/**
+ * Computes road graph detour via Dijkstra.
+ *
+ * @param {RoadNetworkGraph|null} graph
+ * @param {string} vehicleNodeId
+ * @param {string} accessPointNodeId
+ * @param {string} rejoinNodeId
+ * @param {number} directRemainingDistanceMeters
+ * @param {Object} [options]
+ * @returns {import('../types/typedefs.js').DetourResult}
+ */
+export function calculateDetour(
+  graph,
+  vehicleNodeId,
+  accessPointNodeId,
+  rejoinNodeId,
+  directRemainingDistanceMeters = 0,
+  options = {}
+) {
+  const hasGraphData = Boolean(
+    graph &&
+    graph instanceof RoadNetworkGraph &&
+    graph.nodes.has(vehicleNodeId) &&
+    graph.nodes.has(accessPointNodeId) &&
+    graph.nodes.has(rejoinNodeId)
+  );
+
+  if (!hasGraphData) {
+    return {
+      detourDistanceMeters: 0,
+      detourDurationSeconds: 0,
+      turnCount: 0,
+      uTurnCount: 0,
+      detourClassification: 'Excessive',
+      accessibilityClass: 'UNVERIFIED',
+      pathNodeIds: [],
+      accessibilityReason: 'No road-graph connectivity data available.'
+    };
+  }
+
+  const path1 = dijkstra(graph, vehicleNodeId, accessPointNodeId, options);
+  const path2 = dijkstra(graph, accessPointNodeId, rejoinNodeId, options);
+
+  const accessibilityClass = classifyAccessibility({
+    hasGraphData: true,
+    path1,
+    path2
+  });
+
+  if (!path1 || !path2 || accessibilityClass === 'RED') {
+    return {
+      detourDistanceMeters: Infinity,
+      detourDurationSeconds: Infinity,
+      turnCount: (path1?.turns || 0) + (path2?.turns || 0),
+      uTurnCount: (path1?.uTurns || 0) + (path2?.uTurns || 0),
+      detourClassification: 'Excessive',
+      accessibilityClass: 'RED',
+      pathNodeIds: path1 ? path1.path : [],
+      accessibilityReason: 'Destination is unreachable or blocked by median barriers / one-way rules.'
+    };
+  }
+
+  const rawDetourDistance = (path1.distance + path2.distance) - directRemainingDistanceMeters;
+  const detourDistanceMeters = Math.max(0, Math.round(rawDetourDistance));
+
+  const directDuration = options.directRemainingDurationSeconds || 0;
+  const rawDetourDuration = (path1.time + path2.time) - directDuration;
+  const detourDurationSeconds = Math.max(0, Math.round(rawDetourDuration));
+
+  const totalTurns = path1.turns + path2.turns;
+  const totalUTurns = path1.uTurns + path2.uTurns;
+
+  const classification = classifyDetour(detourDistanceMeters, options.thresholds);
+  const fullPath = [...path1.path, ...path2.path.slice(1)];
+
+  return {
+    detourDistanceMeters,
+    detourDurationSeconds,
+    turnCount: totalTurns,
+    uTurnCount: totalUTurns,
+    detourClassification: classification,
+    accessibilityClass,
+    pathNodeIds: fullPath,
+    accessibilityReason: accessibilityClass === 'GREEN'
+      ? 'Direct access on current carriageway.'
+      : 'Requires junction turn or ramp detour.'
+  };
+}
+
+/**
+ * Normalized score for detour duration (0-100).
  */
 export function calculateDetourScore(totalDetourDurationSeconds) {
   if (typeof totalDetourDurationSeconds !== 'number' || totalDetourDurationSeconds < 0) {
     return 0;
   }
   const minutes = totalDetourDurationSeconds / 60;
-  // Non-linear decay: penalty accelerates as detour increases
   const score = Math.max(0, 100 * Math.exp(-0.09 * minutes));
   return Math.round(score * 10) / 10;
 }
 
 /**
- * Calculates real detour distance, duration, turn count, and U-turn penalties.
- *
- * @param {import('../types/typedefs.js').Restaurant} restaurant
- * @param {[number, number]} nearestRoutePoint - [lat, lng]
- * @param {RoadNetworkGraph|null} [roadGraph]
- * @param {Object} [options]
- * @param {boolean} [options.isDividedHighway=true]
- * @returns {import('../types/typedefs.js').DetourMetrics}
+ * Detour metrics calculator for high-level pipeline.
  */
 export function calculateDetourMetrics(restaurant, nearestRoutePoint, roadGraph = null, options = {}) {
-  if (!restaurant || !restaurant.location) {
-    throw new TypeError('[detourCalculator] Invalid restaurant parameter.');
-  }
-  validateLatLng(restaurant.location, 'restaurant.location');
-  validateLatLng(nearestRoutePoint, 'nearestRoutePoint');
-
   const isDividedHighway = options.isDividedHighway ?? true;
 
-  // 1. Try road network graph Dijkstra calculation first
   if (roadGraph && roadGraph instanceof RoadNetworkGraph && roadGraph.nodes.size > 0) {
     const startNode = roadGraph.findNearestNode(nearestRoutePoint, 2000);
     const targetNode = roadGraph.findNearestNode(restaurant.location, 2000);
 
     if (startNode && targetNode) {
-      // Path from highway to restaurant
-      const toRestaurant = dijkstraShortestPath(roadGraph, startNode.nodeId, targetNode.nodeId);
-      // Return path from restaurant back to highway
-      const fromRestaurant = dijkstraShortestPath(roadGraph, targetNode.nodeId, startNode.nodeId);
-
-      if (toRestaurant && fromRestaurant) {
-        const detourDistanceMeters = toRestaurant.distanceMeters + fromRestaurant.distanceMeters;
-        const rawDurationSeconds = toRestaurant.durationSeconds + fromRestaurant.durationSeconds;
-        const uTurnCount = toRestaurant.uTurnCount + fromRestaurant.uTurnCount;
-        const turnCount = toRestaurant.turnCount + fromRestaurant.turnCount;
-        const uTurnPenaltySeconds = uTurnCount * MANEUVER_PENALTIES.U_TURN_PENALTY_SECONDS;
-        const totalDurationSeconds = rawDurationSeconds;
-
-        // Combine path coordinates for visualization
-        const detourPathCoordinates = [
-          nearestRoutePoint,
-          ...toRestaurant.pathCoordinates,
-          ...fromRestaurant.pathCoordinates.slice(1),
-          nearestRoutePoint
-        ];
-
+      const result = calculateDetour(roadGraph, startNode.nodeId, targetNode.nodeId, startNode.nodeId, 0, options);
+      if (result.accessibilityClass !== 'RED' && result.detourDistanceMeters !== Infinity) {
         return {
-          detourDistanceMeters,
-          detourDurationSeconds: totalDurationSeconds,
-          uTurnCount,
-          turnCount,
-          uTurnPenaltySeconds,
-          detourPenaltyScore: calculateDetourScore(totalDurationSeconds),
-          detourPathCoordinates,
+          ...result,
+          uTurnPenaltySeconds: result.uTurnCount * MANEUVER_PENALTIES.U_TURN_PENALTY_SECONDS,
+          detourPenaltyScore: calculateDetourScore(result.detourDurationSeconds),
+          detourPathCoordinates: [nearestRoutePoint, restaurant.location, nearestRoutePoint],
           nearestRoutePoint,
           distanceAlongRouteMeters: restaurant.distanceAlongRouteMeters || 0
         };
@@ -96,21 +202,15 @@ export function calculateDetourMetrics(restaurant, nearestRoutePoint, roadGraph 
     }
   }
 
-  // 2. Verified geometric road corridor estimation when local graph is unmapped
-  // Road network factor: off-highway roads are ~1.3x straight-line distance
-  const straightLineMeters = haversineDistanceMeters(nearestRoutePoint, restaurant.location);
+  // Geometric fallback
+  const straightLineMeters = haversine(nearestRoutePoint, restaurant.location);
   const roadDetourMetersOneWay = Math.round(straightLineMeters * 1.35);
-  const detourDistanceMeters = roadDetourMetersOneWay * 2; // round trip
+  const detourDistanceMeters = roadDetourMetersOneWay * 2;
+  const drivingDurationSeconds = Math.round(detourDistanceMeters / ((40 * 1000) / 3600));
 
-  const localSpeedMs = (LOCAL_ROAD_SPEED_KMH * 1000) / 3600;
-  let drivingDurationSeconds = Math.round(detourDistanceMeters / localSpeedMs);
-
-  // U-turn & cross-lane turn logic:
-  // If opposite side on divided highway, vehicle must take overpass or median U-turn
   let uTurnCount = 0;
-  let turnCount = 2; // standard exit ramp & re-entry ramp
-
-  if (restaurant.sideOfRoad === 'left' && isDividedHighway) {
+  let turnCount = 2;
+  if ((restaurant.sideOfRoad === 'left' || restaurant.roadSide === 'opposite_side') && isDividedHighway) {
     uTurnCount = 1;
     turnCount += 2;
   }
@@ -119,12 +219,6 @@ export function calculateDetourMetrics(restaurant, nearestRoutePoint, roadGraph 
   const turnPenaltySeconds = turnCount * MANEUVER_PENALTIES.RIGHT_TURN_PENALTY_SECONDS;
   const totalDurationSeconds = drivingDurationSeconds + uTurnPenaltySeconds + turnPenaltySeconds;
 
-  const detourPathCoordinates = [
-    nearestRoutePoint,
-    restaurant.location,
-    nearestRoutePoint
-  ];
-
   return {
     detourDistanceMeters,
     detourDurationSeconds: totalDurationSeconds,
@@ -132,7 +226,7 @@ export function calculateDetourMetrics(restaurant, nearestRoutePoint, roadGraph 
     turnCount,
     uTurnPenaltySeconds,
     detourPenaltyScore: calculateDetourScore(totalDurationSeconds),
-    detourPathCoordinates,
+    detourPathCoordinates: [nearestRoutePoint, restaurant.location, nearestRoutePoint],
     nearestRoutePoint,
     distanceAlongRouteMeters: restaurant.distanceAlongRouteMeters || 0
   };

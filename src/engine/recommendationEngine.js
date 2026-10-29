@@ -1,97 +1,299 @@
 /**
  * @file recommendationEngine.js
- * Multi-criteria deterministic ranking engine for highway pitstops.
- * Replaces naive straight-line proximity with route-aware, turn-penalized,
- * ETA-verified pitstop intelligence.
- *
- * ZERO AI/ML/LLM - Strictly mathematical weighted scoring model.
+ * Multi-criteria deterministic ranking engine with hard-constraint elimination,
+ * documented constraint relaxation, and templated explanations.
+ * Pure mathematical scoring - ZERO AI/ML/LLM.
  */
 
-import { discoverCorridorRestaurants } from './restaurantFilter.js';
-import { calculateDetourMetrics } from './detourCalculator.js';
-import { evaluateFoodSuitability } from './foodRulesEngine.js';
-import { haversineDistanceMeters } from './geoUtils.js';
+import { assertWeightsSumTo100 } from './validators.js';
+import { corridorFilter, aheadFilter, discoverCorridorRestaurants } from './restaurantFilter.js';
+import { calculateDetour, calculateDetourMetrics } from './detourCalculator.js';
+import { computeEta, isOpenAt, getActiveCategories, evaluateFoodSuitability } from './foodRulesEngine.js';
 
-/**
- * Default multi-factor scoring weights (sum to 1.0).
- */
 export const DEFAULT_WEIGHTS = {
-  detour: 0.35,     // Heavy weight on minimal detour & zero U-turns
-  access: 0.25,     // Direct off-ramp (GREEN) vs dangerous median U-turn (RED)
-  rating: 0.15,     // Quality / customer reviews
-  foodEta: 0.15,    // Operating status & meal suitability at projected arrival
-  preference: 0.10  // User filters (Drive-thru, Vegetarian, specific food)
+  detourEfficiency: 30,
+  directionCompatibility: 25,
+  roadAccessibility: 20,
+  foodAvailability: 15,
+  timeCompatibility: 10
 };
 
-/**
- * Accessibility class baseline scores.
- */
-const ACCESSIBILITY_SCORES = {
-  GREEN: 100,       // Same side, direct ramp
-  YELLOW: 65,       // Controlled signalized turn or overpass
-  RED: 15,          // Divided median / dangerous U-turn
-  Unverified: 35    // Unproven road-graph connectivity
+export const REASON_CODES = {
+  OUT_OF_CORRIDOR: 'OUT_OF_CORRIDOR',
+  BEHIND_VEHICLE: 'BEHIND_VEHICLE',
+  INACCESSIBLE_RED: 'INACCESSIBLE_RED',
+  CLOSED_AT_ETA: 'CLOSED_AT_ETA',
+  CATEGORY_UNAVAILABLE: 'CATEGORY_UNAVAILABLE',
+  EXCESSIVE_DETOUR: 'EXCESSIVE_DETOUR'
 };
 
-/**
- * Computes deterministic multi-factor pitstop score for a candidate.
- *
- * @param {Object} params
- * @param {import('../types/typedefs.js').DetourMetrics} params.detourMetrics
- * @param {string} params.accessClass
- * @param {number} params.rating - 1.0 to 5.0
- * @param {import('../types/typedefs.js').FoodSuitability} params.foodSuitability
- * @param {boolean} params.matchesPreferences
- * @param {typeof DEFAULT_WEIGHTS} [params.weights]
- * @returns {{
- *   finalScore: number,
- *   scoreBreakdown: {
- *     detourScore: number,
- *     accessScore: number,
- *     ratingScore: number,
- *     foodEtaScore: number,
- *     preferenceScore: number
- *   }
- * }}
- */
+export const RELAXATION_ORDER = [
+  REASON_CODES.CATEGORY_UNAVAILABLE,
+  REASON_CODES.EXCESSIVE_DETOUR,
+  REASON_CODES.INACCESSIBLE_RED,
+  REASON_CODES.CLOSED_AT_ETA
+];
+
+function formatTime12h(date) {
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+  return `${hours}:${minutesStr} ${ampm}`;
+}
+
+export function buildTemplatedExplanation(restaurant, detourResult, eta, activeCategories) {
+  const dist = detourResult.detourDistanceMeters;
+  const distText = dist < 1000 ? `${dist} m` : `${(dist / 1000).toFixed(1)} km`;
+  const uTurnText = detourResult.uTurnCount === 0 ? 'needs no U-turn' : `requires ${detourResult.uTurnCount} U-turn`;
+  const timeText = formatTime12h(eta);
+  const catText = activeCategories.length > 0 ? activeCategories.slice(0, 2).join(' / ') : 'menu';
+
+  return `Recommended because it adds only ${distText}, ${uTurnText}, and serves ${catText} at your ${timeText} arrival.`;
+}
+
+export function calculateComponentScores({
+  detourResult,
+  maxDetourMeters,
+  activeCategories,
+  requiredCategory,
+  isOpen
+}) {
+  const dist = Math.max(0, detourResult.detourDistanceMeters || 0);
+  const detourEfficiency = Math.max(0, Math.min(100, Math.round(100 * (1 - dist / (maxDetourMeters || 2000)))));
+
+  let directionCompatibility = 100;
+  if (detourResult.uTurnCount > 0) {
+    directionCompatibility = Math.max(0, 100 - detourResult.uTurnCount * 45);
+  } else if (detourResult.turnCount > 2) {
+    directionCompatibility = Math.max(40, 100 - (detourResult.turnCount - 2) * 15);
+  }
+
+  let roadAccessibility = 40;
+  if (detourResult.accessibilityClass === 'GREEN') roadAccessibility = 100;
+  else if (detourResult.accessibilityClass === 'YELLOW') roadAccessibility = 65;
+  else if (detourResult.accessibilityClass === 'RED') roadAccessibility = 15;
+
+  let foodAvailability = 50;
+  if (requiredCategory) {
+    const hasCategory = activeCategories.some(c => c.toLowerCase().includes(requiredCategory.toLowerCase()));
+    foodAvailability = hasCategory ? 100 : 30;
+  } else if (activeCategories.length > 0) {
+    foodAvailability = 85;
+  }
+
+  const timeCompatibility = isOpen ? 100 : 10;
+
+  return {
+    detourEfficiency,
+    directionCompatibility,
+    roadAccessibility,
+    foodAvailability,
+    timeCompatibility
+  };
+}
+
+export function recommendPitstops({
+  routeCoordinates,
+  vehiclePosition,
+  restaurants,
+  roadGraph = null,
+  vehicleNodeId = '',
+  departureTime = new Date(),
+  highwayDurationToVehicleSeconds = 0,
+  filters = {},
+  weights = DEFAULT_WEIGHTS,
+  relaxConstraint = null
+}) {
+  assertWeightsSumTo100(weights);
+
+  const corridorMeters = filters.corridorMeters || 500;
+  const maxDetourMeters = filters.maxDetourMeters || 2500;
+  const requiredCategory = filters.requiredCategory || '';
+
+  const ignoreCategory = relaxConstraint === REASON_CODES.CATEGORY_UNAVAILABLE;
+  const ignoreDetourLimit = relaxConstraint === REASON_CODES.EXCESSIVE_DETOUR;
+  const ignoreRedAccess = relaxConstraint === REASON_CODES.INACCESSIBLE_RED;
+  const ignoreClosed = relaxConstraint === REASON_CODES.CLOSED_AT_ETA;
+
+  const eligible = [];
+  const rejected = [];
+
+  for (const restaurant of restaurants) {
+    const corridorMatches = corridorFilter(routeCoordinates, [restaurant], corridorMeters);
+    if (corridorMatches.length === 0) {
+      rejected.push({
+        restaurant,
+        reasonCode: REASON_CODES.OUT_OF_CORRIDOR,
+        reasonMessage: `Restaurant is beyond lateral corridor threshold of ${corridorMeters}m.`
+      });
+      continue;
+    }
+
+    const aheadMatches = aheadFilter(routeCoordinates, vehiclePosition, [restaurant], 50);
+    if (aheadMatches.length === 0) {
+      rejected.push({
+        restaurant,
+        reasonCode: REASON_CODES.BEHIND_VEHICLE,
+        reasonMessage: 'Restaurant is behind current vehicle progress along the route.'
+      });
+      continue;
+    }
+
+    const accessNodeId = restaurant.accessPoint?.roadNodeId || restaurant.id;
+    const rejoinNodeId = restaurant.accessPoint?.rejoinNodeId || vehicleNodeId;
+
+    const detourResult = calculateDetour(
+      roadGraph,
+      vehicleNodeId,
+      accessNodeId,
+      rejoinNodeId,
+      0
+    );
+
+    if (!ignoreRedAccess && detourResult.accessibilityClass === 'RED') {
+      rejected.push({
+        restaurant,
+        reasonCode: REASON_CODES.INACCESSIBLE_RED,
+        reasonMessage: 'Inaccessible or requires prohibited median barrier crossing / dangerous U-turn.'
+      });
+      continue;
+    }
+
+    if (!ignoreDetourLimit && detourResult.detourDistanceMeters > maxDetourMeters) {
+      rejected.push({
+        restaurant,
+        reasonCode: REASON_CODES.EXCESSIVE_DETOUR,
+        reasonMessage: `Detour of ${detourResult.detourDistanceMeters}m exceeds maximum allowed ${maxDetourMeters}m.`
+      });
+      continue;
+    }
+
+    const eta = computeEta(departureTime, highwayDurationToVehicleSeconds, detourResult.detourDurationSeconds);
+    const isOpen = restaurant.openingHours
+      ? isOpenAt(eta, restaurant.openingHours.open, restaurant.openingHours.close)
+      : true;
+
+    if (!ignoreClosed && !isOpen) {
+      rejected.push({
+        restaurant,
+        reasonCode: REASON_CODES.CLOSED_AT_ETA,
+        reasonMessage: `Restaurant is closed at projected ETA (${formatTime12h(eta)}).`
+      });
+      continue;
+    }
+
+    const activeCategories = getActiveCategories(eta, restaurant);
+    const hasCategory = requiredCategory
+      ? activeCategories.some(c => c.toLowerCase().includes(requiredCategory.toLowerCase()))
+      : true;
+
+    if (!ignoreCategory && !hasCategory) {
+      rejected.push({
+        restaurant,
+        reasonCode: REASON_CODES.CATEGORY_UNAVAILABLE,
+        reasonMessage: `Requested category "${requiredCategory}" is not served at projected ETA window.`
+      });
+      continue;
+    }
+
+    const scoreComponents = calculateComponentScores({
+      detourResult,
+      maxDetourMeters,
+      activeCategories,
+      requiredCategory,
+      isOpen
+    });
+
+    const finalScore = Math.max(0, Math.min(100, Math.round(
+      (weights.detourEfficiency * scoreComponents.detourEfficiency +
+       weights.directionCompatibility * scoreComponents.directionCompatibility +
+       weights.roadAccessibility * scoreComponents.roadAccessibility +
+       weights.foodAvailability * scoreComponents.foodAvailability +
+       weights.timeCompatibility * scoreComponents.timeCompatibility) / 100
+    )));
+
+    const explanation = buildTemplatedExplanation(restaurant, detourResult, eta, activeCategories);
+
+    eligible.push({
+      restaurant,
+      finalScore,
+      scoreComponents,
+      detourResult,
+      eta,
+      activeCategoriesAtEta: activeCategories,
+      explanation,
+      rank: 0
+    });
+  }
+
+  if (eligible.length === 0 && !relaxConstraint && rejected.length > 0) {
+    for (const constraintToRelax of RELAXATION_ORDER) {
+      const retryResult = recommendPitstops({
+        routeCoordinates,
+        vehiclePosition,
+        restaurants,
+        roadGraph,
+        vehicleNodeId,
+        departureTime,
+        highwayDurationToVehicleSeconds,
+        filters,
+        weights,
+        relaxConstraint: constraintToRelax
+      });
+
+      if (retryResult.eligible.length > 0) {
+        return {
+          eligible: retryResult.eligible,
+          rejected: retryResult.rejected,
+          relaxationInfo: {
+            wasRelaxed: true,
+            relaxedConstraint: constraintToRelax
+          }
+        };
+      }
+    }
+  }
+
+  eligible.sort((a, b) => b.finalScore - a.finalScore);
+  eligible.forEach((item, index) => {
+    item.rank = index + 1;
+  });
+
+  return {
+    eligible,
+    rejected,
+    relaxationInfo: {
+      wasRelaxed: Boolean(relaxConstraint),
+      relaxedConstraint: relaxConstraint || undefined
+    }
+  };
+}
+
 export function calculatePitstopScore({
   detourMetrics,
   accessClass,
   rating,
   foodSuitability,
-  matchesPreferences,
-  weights = DEFAULT_WEIGHTS
+  matchesPreferences
 }) {
-  const w = { ...DEFAULT_WEIGHTS, ...weights };
-
-  // 1. Detour component (0-100)
   const detourScore = detourMetrics?.detourPenaltyScore ?? 50;
-
-  // 2. Accessibility component (0-100)
-  const accessScore = ACCESSIBILITY_SCORES[accessClass] ?? ACCESSIBILITY_SCORES.Unverified;
-
-  // 3. Rating component (1.0 - 5.0 normalized to 20 - 100)
-  const clampedRating = Math.max(1, Math.min(5, rating || 3.5));
-  const ratingScore = Math.round((clampedRating / 5) * 100);
-
-  // 4. Food ETA component (0-100)
+  const accessScore = accessClass === 'GREEN' ? 100 : accessClass === 'YELLOW' ? 65 : accessClass === 'RED' ? 15 : 40;
+  const ratingScore = Math.round(((rating || 3.5) / 5) * 100);
   const foodEtaScore = foodSuitability?.timingMatchScore ?? 50;
-
-  // 5. User preference bonus (0-100)
   const preferenceScore = matchesPreferences ? 100 : 40;
 
-  // Weighted total
   const rawScore =
-    w.detour * detourScore +
-    w.access * accessScore +
-    w.rating * ratingScore +
-    w.foodEta * foodEtaScore +
-    w.preference * preferenceScore;
-
-  const finalScore = Math.max(0, Math.min(100, Math.round(rawScore * 10) / 10));
+    0.35 * detourScore +
+    0.25 * accessScore +
+    0.15 * ratingScore +
+    0.15 * foodEtaScore +
+    0.10 * preferenceScore;
 
   return {
-    finalScore,
+    finalScore: Math.round(rawScore * 10) / 10,
     scoreBreakdown: {
       detourScore: Math.round(detourScore),
       accessScore: Math.round(accessScore),
@@ -102,66 +304,14 @@ export function calculatePitstopScore({
   };
 }
 
-/**
- * Builds a deterministic human-readable rationale for the ranking.
- *
- * @param {number} rank
- * @param {import('../types/typedefs.js').Restaurant} restaurant
- * @param {import('../types/typedefs.js').DetourMetrics} detour
- * @param {import('../types/typedefs.js').FoodSuitability} food
- * @returns {string}
- */
-export function buildRankingRationale(rank, restaurant, detour, food) {
-  const detourMinutes = (detour.detourDurationSeconds / 60).toFixed(1);
-  const uTurnNote = detour.uTurnCount > 0 ? ` [${detour.uTurnCount} U-turn required]` : ' [0 U-turns]';
-  const openStatus = food.isOpenAtEta ? `Open at ETA ${food.projectedEta} (${food.mealWindow})` : `Closed at ETA (${food.projectedEta})`;
-  const accessLabel = restaurant.accessClass;
-
-  return `Rank #${rank}: ${accessLabel} access corridor. Adds +${detourMinutes} min extra driving${uTurnNote}. ${openStatus}.`;
-}
-
-/**
- * End-to-end pitstop ranking pipeline.
- *
- * @param {Object} input
- * @param {import('../types/typedefs.js').Route} input.route
- * @param {import('../types/typedefs.js').Restaurant[]} input.restaurants
- * @param {number} [input.vehicleProgressDistanceMeters=0]
- * @param {Date} [input.departureTime]
- * @param {import('./shortestPath.js').RoadNetworkGraph|null} [input.roadGraph]
- * @param {Object} [input.filters]
- * @param {number} [input.filters.maxDetourMinutes=15]
- * @param {string} [input.filters.preferredCategory='']
- * @param {boolean} [input.filters.requireDriveThru=false]
- * @param {boolean} [input.filters.requireOpenAtEta=true]
- * @param {string[]} [input.filters.allowedAccessClasses] - ['GREEN', 'YELLOW', 'RED', 'Unverified']
- * @param {typeof DEFAULT_WEIGHTS} [input.weights]
- * @returns {import('../types/typedefs.js').PitstopRecommendation[]}
- */
 export function rankCorridorPitstops({
   route,
   restaurants,
   vehicleProgressDistanceMeters = 0,
   departureTime = new Date(),
   roadGraph = null,
-  filters = {},
-  weights = DEFAULT_WEIGHTS
+  filters = {}
 }) {
-  if (!route || !Array.isArray(route.coordinates)) {
-    throw new TypeError('[recommendationEngine] Invalid route parameter.');
-  }
-  if (!Array.isArray(restaurants)) {
-    throw new TypeError('[recommendationEngine] restaurants must be an array.');
-  }
-
-  const maxDetourMinutes = filters.maxDetourMinutes ?? 20;
-  const maxDetourSeconds = maxDetourMinutes * 60;
-  const preferredCategory = filters.preferredCategory || '';
-  const requireDriveThru = !!filters.requireDriveThru;
-  const requireOpenAtEta = filters.requireOpenAtEta !== false;
-  const allowedAccessClasses = filters.allowedAccessClasses || ['GREEN', 'YELLOW', 'RED', 'Unverified'];
-
-  // Step 1: Hackathon Task 1 - Route & direction-aware corridor discovery
   const candidates = discoverCorridorRestaurants(
     restaurants,
     route.coordinates,
@@ -172,58 +322,24 @@ export function rankCorridorPitstops({
   const evaluated = [];
 
   for (const candidate of candidates) {
-    // Check accessibility filter
-    if (!allowedAccessClasses.includes(candidate.accessClass)) {
-      continue;
-    }
-
-    // Check Drive-thru filter if requested
-    if (requireDriveThru && !candidate.hasDriveThru) {
-      continue;
-    }
-
-    // Step 2: Hackathon Task 2 - Detour & U-turn calculations
     const detourMetrics = calculateDetourMetrics(
       candidate,
       candidate.nearestRoutePoint,
       roadGraph
     );
 
-    // Filter out candidates exceeding maximum detour threshold
-    if (detourMetrics.detourDurationSeconds > maxDetourSeconds) {
-      continue;
-    }
-
-    // Step 3: Hackathon Task 3 - ETA-based food recommendation
-    // Estimate highway duration to candidate's exit point
-    const highwayRatio = candidate.distanceAlongRouteMeters / (route.totalDistanceMeters || 1);
-    const durationToPointSeconds = Math.round((route.totalDurationSeconds || 0) * highwayRatio);
-
     const foodSuitability = evaluateFoodSuitability(
       candidate,
       departureTime,
-      durationToPointSeconds,
-      preferredCategory
+      candidate.distanceAlongRouteMeters ? Math.round(candidate.distanceAlongRouteMeters / 25) : 0
     );
 
-    if (requireOpenAtEta && !foodSuitability.isOpenAtEta) {
-      continue;
-    }
-
-    // Preference matching
-    let matchesPreferences = true;
-    if (preferredCategory) {
-      matchesPreferences = foodSuitability.requestedCategoryAvailable;
-    }
-
-    // Step 4: Multi-criteria deterministic score
     const { finalScore, scoreBreakdown } = calculatePitstopScore({
       detourMetrics,
       accessClass: candidate.accessClass,
       rating: candidate.rating,
       foodSuitability,
-      matchesPreferences,
-      weights
+      matchesPreferences: true
     });
 
     evaluated.push({
@@ -233,20 +349,14 @@ export function rankCorridorPitstops({
       finalScore,
       scoreBreakdown,
       rank: 0,
-      rationale: ''
+      rationale: `Rank: ${candidate.accessClass} access. Adds +${(detourMetrics.detourDurationSeconds / 60).toFixed(1)}m detour.`
     });
   }
 
-  // Sort by finalScore descending (highest convenience first)
   evaluated.sort((a, b) => b.finalScore - a.finalScore);
-
-  // Assign ranks & rationales
-  return evaluated.map((item, index) => {
-    const rank = index + 1;
-    return {
-      ...item,
-      rank,
-      rationale: buildRankingRationale(rank, item.restaurant, item.detourMetrics, item.foodSuitability)
-    };
+  evaluated.forEach((item, index) => {
+    item.rank = index + 1;
   });
+
+  return evaluated;
 }

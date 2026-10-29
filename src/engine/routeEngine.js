@@ -1,41 +1,109 @@
 /**
  * @file routeEngine.js
- * Driving route calculation engine interfacing with public OSRM (OpenStreetMap) service
- * with robust offline fallback routes.
- *
- * All coordinates returned are strictly converted to [lat, lng] format.
- * All units are standardized to distanceMeters and durationSeconds.
- * Provenance is explicitly labeled: "Live (OSRM/OSM)" or "Sample/Demo".
+ * Route segment calculation and OSRM integration with demo fallback.
  */
 
-import { validateLatLng, haversineDistanceMeters } from './geoUtils.js';
+import { haversine, bearing } from './geoUtils.js';
+import { isValidLatLng } from './validators.js';
 
-const OSRM_PUBLIC_ENDPOINT = 'https://router.project-osrm.org/route/v1/driving';
+export class OsrmError extends Error {
+  constructor(message, type = 'OsrmError') {
+    super(message);
+    this.name = type;
+  }
+}
+
+export class OsrmTimeoutError extends OsrmError {
+  constructor(message = 'OSRM request timed out') {
+    super(message, 'OsrmTimeoutError');
+  }
+}
+
+export class OsrmNetworkError extends OsrmError {
+  constructor(message = 'OSRM network connection failed') {
+    super(message, 'OsrmNetworkError');
+  }
+}
+
+export class OsrmRouteNotFoundError extends OsrmError {
+  constructor(message = 'No driving route found between coordinates') {
+    super(message, 'OsrmRouteNotFoundError');
+  }
+}
+
+/**
+ * Builds ordered segments from an array of coordinates with cumulative distances.
+ *
+ * @param {Array<[number, number]>} coords - Array of [lat, lng]
+ * @returns {Array<import('../types/typedefs.js').RouteSegment>}
+ */
+export function buildSegments(coords) {
+  if (!Array.isArray(coords) || coords.length < 2) {
+    throw new Error('[routeEngine] coords must contain at least 2 points.');
+  }
+
+  const segments = [];
+  let cumulativeDistanceMeters = 0;
+
+  for (let i = 0; i < coords.length - 1; i++) {
+    const start = coords[i];
+    const end = coords[i + 1];
+
+    if (!isValidLatLng(start) || !isValidLatLng(end)) {
+      throw new TypeError(`[routeEngine] Invalid coordinate at index ${i}`);
+    }
+
+    const distanceMeters = Math.round(haversine(start, end));
+    cumulativeDistanceMeters += distanceMeters;
+
+    segments.push({
+      start,
+      end,
+      distanceMeters,
+      cumulativeDistanceMeters,
+      segmentIndex: i,
+      bearing: Math.round(bearing(start, end) * 10) / 10
+    });
+  }
+
+  return segments;
+}
+
+/**
+ * Bundled high-fidelity highway demo route (US-101 Corridor) used for offline / zero-network mode.
+ */
+export const BUNDLED_DEMO_ROUTE = [
+  [37.6213, -122.3790], // SFO Corridor
+  [37.5630, -122.3255], // San Mateo
+  [37.5338, -122.2890], // Belmont
+  [37.4852, -122.2364], // Redwood City
+  [37.4419, -122.1430], // Palo Alto
+  [37.4138, -122.0800]  // Mountain View
+];
 
 /**
  * Fetches driving route from public OSRM API.
- * Converts GeoJSON [lng, lat] to standard WayDine [lat, lng].
+ * Converts GeoJSON [lng, lat] to standard [lat, lng].
  *
- * @param {[number, number]} startCoord - [lat, lng]
- * @param {[number, number]} endCoord - [lat, lng]
- * @param {Array<[number, number]>} [waypoints=[]] - Optional intermediate [lat, lng]
+ * @param {[number, number]} src - [lat, lng]
+ * @param {[number, number]} dst - [lat, lng]
  * @param {Object} [options]
- * @param {number} [options.timeoutMs=8000]
- * @returns {Promise<import('../types/typedefs.js').Route>}
+ * @param {number} [options.timeoutMs=5000]
+ * @returns {Promise<{
+ *   geometry: Array<[number, number]>,
+ *   distanceMeters: number,
+ *   durationSeconds: number,
+ *   source: string
+ * }>}
  */
-export async function fetchOsrmRoute(startCoord, endCoord, waypoints = [], options = {}) {
-  validateLatLng(startCoord, 'startCoord');
-  validateLatLng(endCoord, 'endCoord');
-  if (Array.isArray(waypoints)) {
-    waypoints.forEach((wp, idx) => validateLatLng(wp, `waypoint[${idx}]`));
+export async function fetchOsrmRoute(src, dst, options = {}) {
+  if (!isValidLatLng(src) || !isValidLatLng(dst)) {
+    throw new TypeError('[routeEngine] Invalid source or destination coordinate.');
   }
 
-  const allPoints = [startCoord, ...waypoints, endCoord];
-  // OSRM expects coordinates in "lng,lat" format separated by semicolon
-  const coordParam = allPoints.map(([lat, lng]) => `${lng},${lat}`).join(';');
-  const url = `${OSRM_PUBLIC_ENDPOINT}/${coordParam}?overview=full&geometries=geojson&steps=true&annotations=false`;
+  const timeoutMs = options.timeoutMs || 5000;
+  const url = `https://router.project-osrm.org/route/v1/driving/${src[1]},${src[0]};${dst[1]},${dst[0]}?overview=full&geometries=geojson&steps=false`;
 
-  const timeoutMs = options.timeoutMs || 8000;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -44,126 +112,79 @@ export async function fetchOsrmRoute(startCoord, endCoord, waypoints = [], optio
     clearTimeout(timer);
 
     if (!response.ok) {
-      throw new Error(`OSRM HTTP error: status ${response.status}`);
+      throw new OsrmNetworkError(`OSRM HTTP status ${response.status}`);
     }
 
     const data = await response.json();
-
     if (!data.routes || data.routes.length === 0) {
-      throw new Error('OSRM returned no route paths.');
+      throw new OsrmRouteNotFoundError();
     }
 
-    const primaryRoute = data.routes[0];
-
-    // OSRM GeoJSON is [lng, lat], convert to [lat, lng]
-    const coordinates = primaryRoute.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
-
-    const steps = [];
-    if (primaryRoute.legs) {
-      for (const leg of primaryRoute.legs) {
-        if (leg.steps) {
-          for (const s of leg.steps) {
-            steps.push({
-              instruction: s.maneuver ? `${s.maneuver.type || 'turn'} ${s.maneuver.modifier || ''} on ${s.name || 'road'}`.trim() : 'Proceed',
-              distanceMeters: Math.round(s.distance || 0),
-              durationSeconds: Math.round(s.duration || 0),
-              name: s.name || 'Highway',
-              maneuver: {
-                type: s.maneuver?.type || 'turn',
-                modifier: s.maneuver?.modifier || 'straight',
-                location: s.maneuver?.location ? [s.maneuver.location[1], s.maneuver.location[0]] : [0, 0]
-              }
-            });
-          }
-        }
-      }
-    }
+    const primary = data.routes[0];
+    const geometry = primary.geometry.coordinates.map(([lng, lat]) => [lat, lng]);
 
     return {
-      id: `osrm-${Date.now()}`,
-      name: `Highway Route (${(primaryRoute.distance / 1000).toFixed(1)} km)`,
-      coordinates,
-      totalDistanceMeters: Math.round(primaryRoute.distance),
-      totalDurationSeconds: Math.round(primaryRoute.duration),
-      steps,
+      geometry,
+      distanceMeters: Math.round(primary.distance),
+      durationSeconds: Math.round(primary.duration),
       source: 'Live (OSRM/OSM)'
     };
   } catch (err) {
     clearTimeout(timer);
-    console.warn('[routeEngine] OSRM live routing failed or timed out. Falling back to offline route generator.', err);
-    throw err;
+    if (err.name === 'AbortError') {
+      throw new OsrmTimeoutError(`OSRM request timed out after ${timeoutMs}ms`);
+    }
+    if (err instanceof OsrmError) {
+      throw err;
+    }
+    throw new OsrmNetworkError(err.message || 'Network request failed');
   }
 }
 
 /**
- * Creates a synthetic highway route between two points with realistic highway geometry
- * when offline or when OSRM is unreachable.
+ * High-level route loader. Tries OSRM, falls back cleanly to bundled demo route.
  *
- * @param {[number, number]} startCoord - [lat, lng]
- * @param {[number, number]} endCoord - [lat, lng]
- * @param {string} [name='Highway Corridor Route']
- * @returns {import('../types/typedefs.js').Route}
+ * @param {[number, number]} src
+ * @param {[number, number]} dst
+ * @param {Object} [options]
+ * @param {boolean} [options.forceOffline=false]
+ * @returns {Promise<{
+ *   geometry: Array<[number, number]>,
+ *   distanceMeters: number,
+ *   durationSeconds: number,
+ *   segments: Array<import('../types/typedefs.js').RouteSegment>,
+ *   source: 'Live (OSRM/OSM)' | 'demo-fallback'
+ * }>}
  */
-export function generateSyntheticCorridorRoute(
-  startCoord,
-  endCoord,
-  name = 'Highway Corridor Route (Offline)'
-) {
-  validateLatLng(startCoord, 'startCoord');
-  validateLatLng(endCoord, 'endCoord');
-
-  const [lat1, lng1] = startCoord;
-  const [lat2, lng2] = endCoord;
-
-  const directDistanceMeters = haversineDistanceMeters(startCoord, endCoord);
-  // Real highway winding factor ~1.18
-  const totalDistanceMeters = Math.round(directDistanceMeters * 1.18);
-  // Average highway speed ~90 km/h (25 m/s)
-  const totalDurationSeconds = Math.round(totalDistanceMeters / 25);
-
-  const numWaypoints = Math.max(15, Math.min(80, Math.floor(directDistanceMeters / 1500)));
-  const coordinates = [];
-
-  for (let i = 0; i <= numWaypoints; i++) {
-    const fraction = i / numWaypoints;
-    // Add realistic subtle highway curvature
-    const sinOffset = Math.sin(fraction * Math.PI) * 0.008;
-    const lat = lat1 + fraction * (lat2 - lat1) + sinOffset;
-    const lng = lng1 + fraction * (lng2 - lng1);
-    coordinates.push([lat, lng]);
+export async function getRoute(src, dst, options = {}) {
+  if (options.forceOffline) {
+    const segments = buildSegments(BUNDLED_DEMO_ROUTE);
+    const totalDist = segments[segments.length - 1].cumulativeDistanceMeters;
+    return {
+      geometry: BUNDLED_DEMO_ROUTE,
+      distanceMeters: totalDist,
+      durationSeconds: Math.round(totalDist / 25), // 90 km/h
+      segments,
+      source: 'demo-fallback'
+    };
   }
 
-  const steps = [
-    {
-      instruction: `Depart from origin onto State Highway`,
-      distanceMeters: Math.round(totalDistanceMeters * 0.1),
-      durationSeconds: Math.round(totalDurationSeconds * 0.1),
-      name: 'State Highway On-Ramp',
-      maneuver: { type: 'depart', modifier: 'straight', location: startCoord }
-    },
-    {
-      instruction: `Continue along highway corridor for ${(totalDistanceMeters / 1000).toFixed(1)} km`,
-      distanceMeters: Math.round(totalDistanceMeters * 0.8),
-      durationSeconds: Math.round(totalDurationSeconds * 0.8),
-      name: 'Main Interstate Corridor',
-      maneuver: { type: 'continue', modifier: 'straight', location: coordinates[Math.floor(coordinates.length / 2)] }
-    },
-    {
-      instruction: `Arrive at destination`,
-      distanceMeters: Math.round(totalDistanceMeters * 0.1),
-      durationSeconds: Math.round(totalDurationSeconds * 0.1),
-      name: 'Terminal Off-Ramp',
-      maneuver: { type: 'arrive', modifier: 'straight', location: endCoord }
-    }
-  ];
-
-  return {
-    id: `synthetic-${Date.now()}`,
-    name,
-    coordinates,
-    totalDistanceMeters,
-    totalDurationSeconds,
-    steps,
-    source: 'Sample/Demo'
-  };
+  try {
+    const live = await fetchOsrmRoute(src, dst, options);
+    const segments = buildSegments(live.geometry);
+    return {
+      ...live,
+      segments
+    };
+  } catch (err) {
+    const segments = buildSegments(BUNDLED_DEMO_ROUTE);
+    const totalDist = segments[segments.length - 1].cumulativeDistanceMeters;
+    return {
+      geometry: BUNDLED_DEMO_ROUTE,
+      distanceMeters: totalDist,
+      durationSeconds: Math.round(totalDist / 25),
+      segments,
+      source: 'demo-fallback'
+    };
+  }
 }
