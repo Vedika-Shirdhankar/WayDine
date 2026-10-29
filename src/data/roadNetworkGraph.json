@@ -1,0 +1,45 @@
+{
+  "nodes": [
+    { "id": "HWY-US101-414", "location": [37.5338, -122.289], "name": "US-101 S Mainline Mile 414" },
+    { "id": "RAMP-414B-OFF", "location": [37.534, -122.288], "name": "Exit 414B Hillsdale Off-Ramp" },
+    { "id": "FRONTAGE-414B", "location": [37.5342, -122.2865], "name": "Redwood Highway Pitstop Cafe Entry" },
+    { "id": "RAMP-414B-ON", "location": [37.5345, -122.285], "name": "Exit 414B On-Ramp back to US-101 S" },
+
+    { "id": "HWY-US101-408", "location": [37.4852, -122.2364], "name": "US-101 S Mainline Mile 408" },
+    { "id": "RAMP-408-OFF", "location": [37.4848, -122.2355], "name": "Whipple Ave Off-Ramp" },
+    { "id": "REST-CRAFT-ROASTER", "location": [37.484, -122.234], "name": "Silicon Valley Craft Roasters Entry" },
+    { "id": "RAMP-408-ON", "location": [37.4835, -122.233], "name": "Whipple Ave Re-entry Loop" },
+
+    { "id": "HWY-US101-402", "location": [37.4419, -122.143], "name": "US-101 S Mainline Mile 402" },
+    { "id": "RAMP-402-OFF", "location": [37.4425, -122.145], "name": "Embarcadero Rd East Off-Ramp" },
+    { "id": "INT-EMBARCADERO", "location": [37.443, -122.147], "name": "Embarcadero Overpass Intersection" },
+    { "id": "REST-PALOALTO-PIZZA", "location": [37.4435, -122.148], "name": "Palo Alto Wood-Fired Pizza" },
+
+    { "id": "HWY-US101-417-SB", "location": [37.563, -122.3255], "name": "US-101 S Mainline Mile 417 (Southbound)" },
+    { "id": "HWY-US101-417-NB", "location": [37.5628, -122.3258], "name": "US-101 N Mainline Mile 417 (Northbound)" },
+    { "id": "INT-BROADWAY-OVERPASS", "location": [37.558, -122.335], "name": "Broadway Interchange Roundabout / U-Turn" },
+    { "id": "REST-BAYSHORE-BURGER", "location": [37.5615, -122.3295], "name": "Bayshore Burger Bar Entry (NB side)" }
+  ],
+  "edges": [
+    { "from": "HWY-US101-414", "to": "RAMP-414B-OFF", "distanceMeters": 180, "speedKmh": 50, "isRightTurn": true },
+    { "from": "RAMP-414B-OFF", "to": "FRONTAGE-414B", "distanceMeters": 120, "speedKmh": 35 },
+    { "from": "FRONTAGE-414B", "to": "RAMP-414B-ON", "distanceMeters": 150, "speedKmh": 40 },
+    { "from": "RAMP-414B-ON", "to": "HWY-US101-414", "distanceMeters": 200, "speedKmh": 65 },
+
+    { "from": "HWY-US101-408", "to": "RAMP-408-OFF", "distanceMeters": 210, "speedKmh": 55, "isRightTurn": true },
+    { "from": "RAMP-408-OFF", "to": "REST-CRAFT-ROASTER", "distanceMeters": 140, "speedKmh": 35 },
+    { "from": "REST-CRAFT-ROASTER", "to": "RAMP-408-ON", "distanceMeters": 160, "speedKmh": 40 },
+    { "from": "RAMP-408-ON", "to": "HWY-US101-408", "distanceMeters": 220, "speedKmh": 60 },
+
+    { "from": "HWY-US101-402", "to": "RAMP-402-OFF", "distanceMeters": 250, "speedKmh": 50 },
+    { "from": "RAMP-402-OFF", "to": "INT-EMBARCADERO", "distanceMeters": 180, "speedKmh": 30, "isLeftTurn": true },
+    { "from": "INT-EMBARCADERO", "to": "REST-PALOALTO-PIZZA", "distanceMeters": 190, "speedKmh": 30 },
+    { "from": "REST-PALOALTO-PIZZA", "to": "INT-EMBARCADERO", "distanceMeters": 190, "speedKmh": 30 },
+    { "from": "INT-EMBARCADERO", "to": "HWY-US101-402", "distanceMeters": 320, "speedKmh": 45 },
+
+    { "from": "HWY-US101-417-SB", "to": "INT-BROADWAY-OVERPASS", "distanceMeters": 1200, "speedKmh": 60 },
+    { "from": "INT-BROADWAY-OVERPASS", "to": "HWY-US101-417-NB", "distanceMeters": 800, "speedKmh": 45, "isUTurn": true },
+    { "from": "HWY-US101-417-NB", "to": "REST-BAYSHORE-BURGER", "distanceMeters": 350, "speedKmh": 40 },
+    { "from": "HWY-US101-417-SB", "to": "HWY-US101-417-NB", "distanceMeters": 50, "speedKmh": 0, "hasMedianBarrier": true }
+  ]
+}

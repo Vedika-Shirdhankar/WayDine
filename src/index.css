@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #080D18;
+    color: #F5F7FA;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #080D18;
+}
+::-webkit-scrollbar-thumb {
+  background: #223048;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334766;
+}
+
+/* Leaflet Dark Popup Customization */
+.leaflet-popup-content-wrapper, .leaflet-popup-tip {
+  background: #151F30 !important;
+  color: #F5F7FA !important;
+  border: 1px solid #223048 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.7) !important;
+}
+
+.leaflet-container {
+  background: #080D18 !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+.leaflet-popup-close-button {
+  color: #94A3B8 !important;
+}
+
+.leaflet-popup-close-button:hover {
+  color: #F5F7FA !important;
+}
+
+/* Smooth fade in */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out forwards;
+}
