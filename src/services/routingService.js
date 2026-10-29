@@ -28,8 +28,13 @@ import { getRepository, getRoutes, getRouteById } from '../data/restaurantReposi
 export async function calculateRouteService(src, dst, options = {}) {
   const result = await getRoute(src, dst, options);
   const dataSource = result.source === 'Live (OSRM/OSM)' ? 'live-osrm' : 'demo-fallback';
+  const coords = result.geometry || result.coordinates || [];
   return {
     ...result,
+    coordinates: coords,
+    geometry: coords,
+    totalDistanceMeters: result.distanceMeters || result.totalDistanceMeters || 0,
+    totalDurationSeconds: result.durationSeconds || result.totalDurationSeconds || 0,
     dataSource
   };
 }

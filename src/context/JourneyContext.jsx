@@ -160,7 +160,7 @@ export function JourneyProvider({ children }) {
     : 0;
 
   // Run the core engine with current route & filters
-  const runEngine = useCallback(async (currentRoute, vehicleMeters = vehicleDistanceMeters, currentFilters = filters) => {
+  const runEngine = useCallback(async (currentRoute, vehicleMeters = vehicleDistanceMeters, currentFilters = filters, currentTime = departureTime) => {
     if (!currentRoute?.coordinates || currentRoute.coordinates.length < 2) return;
 
     setIsEngineCalculating(true);
@@ -171,10 +171,21 @@ export function JourneyProvider({ children }) {
         priceRange: currentFilters.budget !== 'Any' ? currentFilters.budget : undefined
       });
       const roadGraph = await repo.getRoadGraph();
-      const demoParams = await repo.getDemoParameters();
+      // Compute vehicle position directly for vehicleMeters along currentRoute
+      const currentVehicleState = interpolatePositionAlongRoute(currentRoute.coordinates, vehicleMeters);
+      const currentVehiclePos = currentVehicleState?.position || currentRoute.coordinates[0];
 
-      // Estimate vehicle node
-      const vehicleNodeId = demoParams?.vehicleNodeId || 'NODE_KALAMBOLI';
+      // Dynamically select vehicle mainline node based on progress along route
+      let vehicleNodeId = 'NODE_KALAMBOLI';
+      if (vehicleMeters < 15000) vehicleNodeId = 'NODE_MUMBAI_START';
+      else if (vehicleMeters < 45000) vehicleNodeId = 'NODE_KALAMBOLI';
+      else if (vehicleMeters < 72000) vehicleNodeId = 'NODE_KHALAPUR_HWY';
+      else if (vehicleMeters < 88000) vehicleNodeId = 'NODE_KHOPOLI_HWY';
+      else if (vehicleMeters < 105000) vehicleNodeId = 'NODE_LONAVALA_HWY';
+      else if (vehicleMeters < 122000) vehicleNodeId = 'NODE_TALEGAON_HWY';
+      else if (vehicleMeters < 140000) vehicleNodeId = 'NODE_SOMATNE_HWY';
+      else vehicleNodeId = 'NODE_PUNE_END';
+
       const highwayDurationToVehicleSeconds = Math.round(vehicleMeters / 25); // ~90 km/h
 
       // Read custom weights or engine config from localStorage if configured
@@ -199,11 +210,11 @@ export function JourneyProvider({ children }) {
 
       const results = recommendPitstops({
         routeCoordinates: currentRoute.coordinates,
-        vehiclePosition: vehicleState.position,
+        vehiclePosition: currentVehiclePos,
         restaurants,
         roadGraph,
         vehicleNodeId,
-        departureTime,
+        departureTime: currentTime,
         highwayDurationToVehicleSeconds,
         filters: {
           corridorMeters: corridorM,
@@ -239,7 +250,7 @@ export function JourneyProvider({ children }) {
     } finally {
       setIsEngineCalculating(false);
     }
-  }, [vehicleDistanceMeters, filters, vehicleState.position, departureTime, selectedRestaurantId, addToast]);
+  }, [vehicleDistanceMeters, filters, departureTime, selectedRestaurantId, addToast]);
 
   // "Load Demo Journey" button action - instantly loads demo route & runs engine
   const loadDemoJourney = useCallback(async () => {
@@ -336,7 +347,48 @@ export function JourneyProvider({ children }) {
     const updated = { ...filters, ...newFilters };
     setFilters(updated);
     if (route) {
-      runEngine(route, vehicleDistanceMeters, updated);
+      runEngine(route, vehicleDistanceMeters, updated, departureTime);
+    }
+  };
+
+  const changeDepartureTime = (newTime) => {
+    setDepartureTime(newTime);
+    if (route) {
+      runEngine(route, vehicleDistanceMeters, filters, newTime);
+    }
+  };
+
+  const updateStartPoint = async (place) => {
+    setStartPoint(place);
+    if (destinationPoint && place.name !== destinationPoint.name) {
+      try {
+        setIsLoading(true);
+        const calculatedRoute = await calculateRouteService(place.location, destinationPoint.location);
+        setRoute(calculatedRoute);
+        setVehicleDistanceMeters(0);
+        await runEngine(calculatedRoute, 0, filters, departureTime);
+      } catch (e) {
+        console.warn('Recalculating route failed on start change:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const updateDestinationPoint = async (place) => {
+    setDestinationPoint(place);
+    if (startPoint && place.name !== startPoint.name) {
+      try {
+        setIsLoading(true);
+        const calculatedRoute = await calculateRouteService(startPoint.location, place.location);
+        setRoute(calculatedRoute);
+        setVehicleDistanceMeters(0);
+        await runEngine(calculatedRoute, 0, filters, departureTime);
+      } catch (e) {
+        console.warn('Recalculating route failed on destination change:', e);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -356,7 +408,10 @@ export function JourneyProvider({ children }) {
         destinationPoint,
         setDestinationPoint,
         departureTime,
-        setDepartureTime,
+        setDepartureTime: changeDepartureTime,
+        changeDepartureTime,
+        updateStartPoint,
+        updateDestinationPoint,
         travelMode,
         setTravelMode,
         vehicleDistanceMeters,

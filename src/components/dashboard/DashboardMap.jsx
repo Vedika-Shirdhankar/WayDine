@@ -163,20 +163,26 @@ export function DashboardMap() {
     return list;
   }, [engineResults]);
 
-  // Active Detour Preview Path
+  // Active Detour Preview Path (draws the actual off-ramp detour to the restaurant)
   const activeDetourPath = useMemo(() => {
     const targetId = previewDetourRestaurantId || selectedRestaurantId;
     if (!targetId) return null;
 
-    const match = engineResults.eligible.find(r => r.restaurant.id === targetId);
+    const match = engineResults.eligible.find(r => r.restaurant.id === targetId) ||
+                  engineResults.rejected.find(r => r.restaurant.id === targetId);
     if (match) {
-      // Create path from route to restaurant and back
-      const nearest = match.restaurant.location;
-      const vehiclePos = vehiclePosition;
-      return [vehiclePos, nearest, vehiclePos];
+      const rest = match.restaurant || match;
+      const restLoc = rest.location;
+      const accessLoc = rest.accessPoint?.location;
+
+      if (restLoc && accessLoc) {
+        return [accessLoc, restLoc, accessLoc];
+      } else if (restLoc && vehiclePosition) {
+        return [vehiclePosition, restLoc];
+      }
     }
     return null;
-  }, [previewDetourRestaurantId, selectedRestaurantId, engineResults.eligible, vehiclePosition]);
+  }, [previewDetourRestaurantId, selectedRestaurantId, engineResults, vehiclePosition]);
 
   return (
     <div className="relative w-full h-[520px] lg:h-full min-h-[500px] rounded-2xl overflow-hidden border border-borderSubtle bg-card shadow-2xl">
