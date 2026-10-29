@@ -4,114 +4,71 @@
 
 WayDine ranks restaurants along a planned highway route by how convenient they **actually** are, not by naive straight-line proximity.
 
+> ⚠️ **Note on Coordinates**: All geographic coordinates and road network graphs bundled in the demo seeds are **approximate sample data** representing real-world highway corridors for testing and demonstration purposes.
+
 ---
 
 ## 🏆 Three Hackathon Tasks (Visibly Demonstrable)
 
 1. **Route-Aware, Direction-Aware Discovery**
-   - Perpendicular corridor filtering along the dense polyline.
-   - Dynamic ahead-of-vehicle progression tracking (filters out passed venues as the vehicle drives).
-   - Side-of-travel determination (same side vs opposite side).
-   - Road accessibility classification: **GREEN** (direct off-ramp / service road), **YELLOW** (controlled signal or overpass), **RED** (prohibitive or dangerous median U-turn), and **Unverified** (no connected road graph).
+   - Lateral corridor filtering along dense route polyline.
+   - Dynamic ahead-of-vehicle progression tracking (drops restaurants behind vehicle).
+   - Travel direction and side-of-road determination.
+   - Road accessibility classification: **GREEN** (direct off-ramp / service road), **YELLOW** (controlled signal or overpass), **RED** (prohibitive or dangerous median U-turn), and **UNVERIFIED** (no connected road graph).
 
 2. **Detour & U-Turn Minimization**
-   - Real road-network extra round-trip distance (meters) and travel duration (seconds).
+   - Real road-network extra distance (meters) and travel duration (seconds) via Dijkstra.
    - Turn penalties and heavy U-turn penalties (+240s for hazardous median crossings).
-   - Exponential penalty decay curve for detour scores (0–100).
-   - Dijkstra's shortest path graph traversal over verified road topologies.
+   - Exponential detour efficiency decay curve.
+   - Dijkstra's shortest path graph traversal over verified directed road topology.
 
 3. **ETA-Based Food Recommendation**
    - Per-restaurant projected ETA based on departure time and highway drive duration.
    - Dynamic opening hours evaluation (including shifts crossing midnight).
-   - Active meal service window identification (Breakfast, Lunch, Afternoon Snack, Dinner, Late Night).
+   - Active meal service window identification (Breakfast, Lunch, Snacks, Dinner, Late Night).
    - Category availability matching at projected arrival time.
 
 ---
 
-## 🛡️ Hard Rules & Integrity Compliance
+## 📊 Benchmark Test Cases (Mumbai -> Pune Demo Seed)
 
-- **NO AI/ML/LLMs**: Only graph algorithms (Dijkstra), geospatial spherical mathematics (Haversine, cross-track, along-track projection), database queries, and deterministic weighted scoring.
-- **Zero Hallucinated Data**: Every data source is explicitly tagged in the UI: `"Live (OSRM/OSM)"`, `"Database"`, or `"Sample/Demo"`.
-- **Road-Graph Accessibility Support**: Venues without verified road graph connectivity are strictly labeled `"Unverified"`.
-- **Zero API Keys & Zero Supabase Setup Required**: Runs 100% self-contained out-of-the-box using the public OSRM router with seamless offline fallback cache and seed data.
-- **Strict Units & Validation**: `[lat, lng]` ordering standardized everywhere; distance in meters (`distanceMeters`), duration in seconds (`durationSeconds`); runtime type validation on all engine functions.
+The Phase 2 dataset bundles 12 benchmark cases deliberately designed to test all edge cases of the engine:
+
+| Case # | Restaurant Name | Deliberate Scenario | Expected Result | Reason / Status |
+| :---: | :--- | :--- | :---: | :--- |
+| **1** | Expressway Food Court Khalapur | Close to route, same carriageway | **Eligible** | Verified `GREEN` access (0 U-turns) |
+| **2** | Median Barrier Mumbai-Bound Dhaba | Opposite carriageway across concrete median | **Rejected** | `INACCESSIBLE_RED` (Forbidden median crossing) |
+| **3** | Lonavala Ghat View Restaurant | Overpass junction diversion | **Eligible** | Verified `YELLOW` access (1 legal U-turn) |
+| **4** | Old Khopoli Valley Heritage Inn | Long diversion (3.4 km detour) | **Rejected** | `EXCESSIVE_DETOUR` (Exceeds 2500m max detour) |
+| **5** | Twilight Sunset Grill & Bar | Evening dinner only (18:00–23:30) | **Rejected** | `CLOSED_AT_ETA` (Closed at 11:30 AM arrival) |
+| **6** | Sunrise Early Waffle & Bakery | Open, but breakfast/waffles only | **Rejected** | `CATEGORY_UNAVAILABLE` (Lunch filter active) |
+| **7** | Premier Express Pitstop & Roastery | Direct 80m plaza ramp, 4.9★, 24/7 | **Rank #1** | **Top Pick** (Score 100/100, `GREEN`) |
+| **8** | Ghat Mystery Fruit Stand & Tea | Missing road network data | **Eligible** | `UNVERIFIED` (Never assumed accessible) |
+| **9** | Night Owl 24/7 Ghat Diner | Shift closes past midnight (11:00–03:00) | **Eligible** | `GREEN` (Handles midnight crossover) |
+| **10** | Green Earth Pure Veg & Vegan Cafe | Vegan diet, '$' budget | **Eligible** | `GREEN` (Satisfies vegan filter) |
+| **11** | Royal Coastal Seafood Retreat | Coastal cuisine, '$$$$' luxury | **Eligible** | `GREEN` (High-end dine-in) |
+| **12** | Express Burger & Shake Drive-Thru | Fast food, '$' budget, Drive-thru | **Eligible** | `GREEN` (Quick stop) |
 
 ---
 
-## 🛠️ Tech Stack
+## 🛡️ Repository Layer (`src/data/`)
 
-- **Frontend**: React 18 (ES Modules, JavaScript, no TypeScript) + Vite + Tailwind CSS
-- **Mapping**: Leaflet + React-Leaflet with CartoDB Dark Matter tiles
-- **Icons & UI**: Lucide React + Tailwind theme styled according to the dark navigation palette
-- **Data Visualization**: Recharts (Detour vs Convenience Score chart)
-- **Routing**: OpenStreetMap OSRM Public Driving API + Offline Corridor Generator
-- **Testing**: Vitest unit test suite
+- `IWayDineRepository`: JSDoc contract defining all required methods (`getRestaurants`, `getFoodAvailability`, `getAccessPoints`, `getRoadGraph`, `saveRoute`, `saveRecommendations`, `saveHistory`, `getPreferences`, `savePreferences`).
+- `LocalSeedRepository` (DEFAULT): Reads `mumbaiPuneSeed.json`, persists to `localStorage` (or in-memory store in Node.js).
+- `SupabaseRepository`: Enabled only when `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are provided; otherwise gracefully falls back to `LocalSeedRepository`.
+- `supabase/schema.sql`: Full multi-tenant schema with PKs, FKs, indexes, CHECK constraints, RLS policies, and guarded PostGIS extensions.
 
 ---
 
-## 🚀 Quickstart
+## 🚀 Quickstart & Checkpoint Commands
 
 ```bash
 # 1. Install dependencies
 npm install
 
-# 2. Run unit tests (15/15 passing)
-npm run test
+# 2. Run all unit & integration tests (50/50 passing)
+npm test
 
-# 3. Start development server
-npm run dev
-
-# 4. Build production bundle
-npm run build
-```
-
----
-
-## 📁 Architecture
-
-```
-WayDine/
-├── src/
-│   ├── engine/                # Pure mathematical functions (zero React, zero network)
-│   │   ├── geoUtils.js             # Haversine, bearing, cross-track, segment projection
-│   │   ├── shortestPath.js         # Road network graph & Dijkstra shortest path
-│   │   ├── detourCalculator.js     # Real detour distance/time & U-turn penalty math
-│   │   ├── foodRulesEngine.js      # Opening hours, meal windows & ETA food rules
-│   │   ├── restaurantFilter.js     # Corridor buffer, ahead filter & accessibility class
-│   │   ├── recommendationEngine.js # Multi-criteria deterministic scoring formula
-│   │   └── routeEngine.js          # OSRM public client & offline corridor route fallback
-│   ├── data/                  # Seeds & repository abstraction
-│   │   ├── seedRestaurants.json   # High-fidelity highway restaurant database records
-│   │   ├── sampleRoutes.json      # Highway corridor presets (US-101, I-95, Mumbai-Pune)
-│   │   ├── roadNetworkGraph.json  # Ramps, frontage roads, medians & turn barriers
-│   │   └── restaurantRepository.js# Data repository with optional Supabase fallback
-│   ├── services/
-│   │   └── routingService.js      # OSRM & route caching service
-│   ├── hooks/
-│   │   ├── useRoutePlanning.js    # Route selection & OSRM toggle hook
-│   │   ├── usePitstopEngine.js    # Filter criteria & recommendation state hook
-│   │   └── useSimulation.js       # Real-time highway driving simulation hook
-│   ├── components/            # UI components
-│   │   ├── Navbar.jsx             # Brand, route switcher, OSRM status & nav tabs
-│   │   ├── MapViewer.jsx          # Leaflet dark map, pins, corridor glow & detour preview
-│   │   ├── SimulationBar.jsx      # Driving scrubber, play/pause & speed multiplier
-│   │   ├── FilterControls.jsx     # Max detour slider, category filter & access pills
-│   │   ├── RestaurantCard.jsx     # Ranked pitstop card with convenience score
-│   │   ├── ScoreBreakdownModal.jsx# Exact mathematical formula breakdown modal
-│   │   ├── DetourComparisonChart.jsx # Recharts detour vs convenience plot
-│   │   └── Toast.jsx              # System notifications
-│   ├── pages/
-│   │   ├── Dashboard.jsx          # Central navigation command center
-│   │   ├── EngineLab.jsx          # Interactive test sandbox for hackathon judges
-│   │   └── RoadGraphViewer.jsx    # Visual proof of road graph vertices, edges & barriers
-│   ├── types/
-│   │   └── typedefs.js            # JSDoc type definitions
-│   ├── App.jsx
-│   ├── main.jsx
-│   └── index.css
-├── test/
-│   └── engine.test.js         # Complete Vitest engine test suite
-├── package.json
-├── tailwind.config.js
-└── vite.config.js
+# 3. Run Phase 2 CLI Demo script
+npm run demo
 ```

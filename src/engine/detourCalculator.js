@@ -77,13 +77,14 @@ export function classifyAccessibility({
 }
 
 /**
- * Computes road graph detour via Dijkstra.
+ * Computes road graph detour via Dijkstra:
+ * detour = dist(vehicle -> access point) + dist(access point -> rejoin node) - remaining original route distance.
  *
  * @param {RoadNetworkGraph|null} graph
  * @param {string} vehicleNodeId
  * @param {string} accessPointNodeId
  * @param {string} rejoinNodeId
- * @param {number} directRemainingDistanceMeters
+ * @param {number} [directRemainingDistanceMeters=0]
  * @param {Object} [options]
  * @returns {import('../types/typedefs.js').DetourResult}
  */
@@ -104,12 +105,14 @@ export function calculateDetour(
   );
 
   if (!hasGraphData) {
+    const fallbackMeters = options.fallbackDetourMeters ?? 1200;
+    const fallbackSeconds = options.fallbackDetourSeconds ?? 180;
     return {
-      detourDistanceMeters: 0,
-      detourDurationSeconds: 0,
-      turnCount: 0,
+      detourDistanceMeters: fallbackMeters,
+      detourDurationSeconds: fallbackSeconds,
+      turnCount: 2,
       uTurnCount: 0,
-      detourClassification: 'Excessive',
+      detourClassification: classifyDetour(fallbackMeters, options.thresholds),
       accessibilityClass: 'UNVERIFIED',
       pathNodeIds: [],
       accessibilityReason: 'No road-graph connectivity data available.'
@@ -138,11 +141,22 @@ export function calculateDetour(
     };
   }
 
-  const rawDetourDistance = (path1.distance + path2.distance) - directRemainingDistanceMeters;
+  // Determine baseline direct highway distance between vehicleNodeId and rejoinNodeId
+  let baselineDistance = directRemainingDistanceMeters;
+  let baselineDuration = options.directRemainingDurationSeconds || 0;
+
+  if (baselineDistance <= 0 && vehicleNodeId !== rejoinNodeId) {
+    const directHighway = dijkstra(graph, vehicleNodeId, rejoinNodeId, options);
+    if (directHighway) {
+      baselineDistance = directHighway.distance;
+      baselineDuration = directHighway.time;
+    }
+  }
+
+  const rawDetourDistance = (path1.distance + path2.distance) - baselineDistance;
   const detourDistanceMeters = Math.max(0, Math.round(rawDetourDistance));
 
-  const directDuration = options.directRemainingDurationSeconds || 0;
-  const rawDetourDuration = (path1.time + path2.time) - directDuration;
+  const rawDetourDuration = (path1.time + path2.time) - baselineDuration;
   const detourDurationSeconds = Math.max(0, Math.round(rawDetourDuration));
 
   const totalTurns = path1.turns + path2.turns;

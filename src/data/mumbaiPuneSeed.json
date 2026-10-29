@@ -1,0 +1,418 @@
+{
+  "demoRoute": {
+    "id": "route-mumbai-pune-expressway",
+    "name": "Mumbai to Pune Expressway Corridor (NH-48)",
+    "description": "Approximate sample highway trajectory from Mumbai to Pune via the 6-lane access-controlled expressway. All coordinates are approximate sample data.",
+    "dataSource": "sample-demo",
+    "origin": { "name": "Mumbai (Eastern Express Highway)", "location": [19.0760, 72.8777] },
+    "destination": { "name": "Pune (Kiwale Interchange / Wakad)", "location": [18.5204, 73.8567] },
+    "totalDistanceMeters": 148500,
+    "totalDurationSeconds": 8400,
+    "coordinates": [
+      [19.0760, 72.8777],
+      [19.0600, 72.9980],
+      [19.0144, 73.1025],
+      [18.9120, 73.2050],
+      [18.8350, 73.3080],
+      [18.7900, 73.3400],
+      [18.7525, 73.4086],
+      [18.7200, 73.6500],
+      [18.6850, 73.7200],
+      [18.5204, 73.8567]
+    ]
+  },
+  "fixedDemoParameters": {
+    "departureTimeIso": "2026-10-29T11:00:00",
+    "vehiclePosition": [19.0144, 73.1025],
+    "vehicleNodeId": "NODE_KALAMBOLI",
+    "highwayDurationToVehicleSeconds": 1800,
+    "filterRequiredCategory": "Lunch",
+    "filterMaxDetourMeters": 2500
+  },
+  "roadGraph": {
+    "nodes": [
+      { "id": "NODE_MUMBAI_START", "location": [19.0760, 72.8777], "name": "Mumbai Origin Mainline" },
+      { "id": "NODE_KALAMBOLI", "location": [19.0144, 73.1025], "name": "Kalamboli Toll KM 25 (Vehicle Location)" },
+      
+      { "id": "NODE_KHALAPUR_HWY", "location": [18.8350, 73.3080], "name": "Expressway Mainline Pune-bound KM 65" },
+      { "id": "NODE_KHALAPUR_OFF", "location": [18.8352, 73.3082], "name": "Khalapur Food Plaza Off-Ramp" },
+      { "id": "REST_01_RAMP", "location": [18.8355, 73.3090], "name": "Food Mall Khalapur Entry" },
+      { "id": "REST_07_ENTRY", "location": [18.8360, 73.3085], "name": "Premier Express Pitstop Entry" },
+      { "id": "REST_12_RAMP", "location": [18.8370, 73.3095], "name": "Express Burger Drive-Thru Entry" },
+      { "id": "NODE_KHALAPUR_ON", "location": [18.8375, 73.3098], "name": "Khalapur On-Ramp back to Expressway" },
+
+      { "id": "NODE_KHALAPUR_MUMBAI_BOUND", "location": [18.8348, 73.3075], "name": "Expressway Mainline Mumbai-bound (Opposite Carriageway)" },
+      { "id": "REST_02_MEDIAN", "location": [18.8340, 73.3070], "name": "Opposite Dhaba (Divided Median)" },
+
+      { "id": "NODE_KHOPOLI_HWY", "location": [18.7900, 73.3400], "name": "Khopoli Mainline KM 80" },
+      { "id": "NODE_KHOPOLI_OFF", "location": [18.7880, 73.3410], "name": "Khopoli Valley Toll Diversion" },
+      { "id": "REST_04_VALLEY", "location": [18.7750, 73.3420], "name": "Old Khopoli Valley Heritage Inn Entry" },
+
+      { "id": "NODE_LONAVALA_HWY", "location": [18.7525, 73.4086], "name": "Lonavala Overpass KM 95" },
+      { "id": "NODE_LONAVALA_OFF", "location": [18.7528, 73.4090], "name": "Lonavala Khandala Exit Loop" },
+      { "id": "NODE_LONAVALA_UTURN", "location": [18.7532, 73.4100], "name": "Lonavala Junction U-Turn / Overpass" },
+      { "id": "REST_03_OVERPASS", "location": [18.7535, 73.4110], "name": "Ghat View Restaurant Entry" },
+      { "id": "REST_09_RAMP", "location": [18.7540, 73.4095], "name": "Night Owl 24/7 Diner Entry" },
+      { "id": "NODE_LONAVALA_ON", "location": [18.7545, 73.4115], "name": "Lonavala Re-entry Slip Road" },
+
+      { "id": "NODE_TALEGAON_HWY", "location": [18.7200, 73.6500], "name": "Talegaon Interchange KM 115" },
+      { "id": "NODE_TALEGAON_OFF", "location": [18.7202, 73.6505], "name": "Talegaon Service Off-Ramp" },
+      { "id": "REST_05_RAMP", "location": [18.7205, 73.6515], "name": "Twilight Grill Entry" },
+      { "id": "REST_06_RAMP", "location": [18.7210, 73.6510], "name": "Sunrise Waffle Entry" },
+      { "id": "NODE_TALEGAON_ON", "location": [18.7215, 73.6520], "name": "Talegaon Re-entry Ramp" },
+
+      { "id": "NODE_SOMATNE_HWY", "location": [18.6850, 73.7200], "name": "Somatne Toll KM 130" },
+      { "id": "NODE_SOMATNE_OFF", "location": [18.6855, 73.7205], "name": "Somatne Slip Road" },
+      { "id": "REST_10_RAMP", "location": [18.6860, 73.7210], "name": "Green Earth Pure Veg Entry" },
+      { "id": "REST_11_RAMP", "location": [18.6870, 73.7220], "name": "Royal Coastal Seafood Entry" },
+      { "id": "NODE_SOMATNE_ON", "location": [18.6875, 73.7225], "name": "Somatne On-Ramp" },
+
+      { "id": "NODE_PUNE_END", "location": [18.5204, 73.8567], "name": "Pune Terminal" }
+    ],
+    "edges": [
+      { "from": "NODE_MUMBAI_START", "to": "NODE_KALAMBOLI", "distanceMeters": 25000, "durationSeconds": 1200, "speedKmh": 90 },
+      { "from": "NODE_KALAMBOLI", "to": "NODE_KHALAPUR_HWY", "distanceMeters": 40000, "durationSeconds": 1800, "speedKmh": 90 },
+      
+      { "from": "NODE_KHALAPUR_HWY", "to": "NODE_KHALAPUR_OFF", "distanceMeters": 100, "durationSeconds": 15, "speedKmh": 45, "isTurn": true },
+      { "from": "NODE_KHALAPUR_OFF", "to": "REST_01_RAMP", "distanceMeters": 110, "durationSeconds": 15, "speedKmh": 35 },
+      { "from": "REST_01_RAMP", "to": "NODE_KHALAPUR_ON", "distanceMeters": 110, "durationSeconds": 15, "speedKmh": 40 },
+      
+      { "from": "NODE_KHALAPUR_OFF", "to": "REST_07_ENTRY", "distanceMeters": 40, "durationSeconds": 5, "speedKmh": 40 },
+      { "from": "REST_07_ENTRY", "to": "NODE_KHALAPUR_ON", "distanceMeters": 40, "durationSeconds": 5, "speedKmh": 45 },
+
+      { "from": "NODE_KHALAPUR_OFF", "to": "REST_12_RAMP", "distanceMeters": 120, "durationSeconds": 15, "speedKmh": 35 },
+      { "from": "REST_12_RAMP", "to": "NODE_KHALAPUR_ON", "distanceMeters": 120, "durationSeconds": 15, "speedKmh": 40 },
+
+      { "from": "NODE_KHALAPUR_ON", "to": "NODE_KHOPOLI_HWY", "distanceMeters": 15000, "durationSeconds": 600, "speedKmh": 90 },
+      { "from": "NODE_KHALAPUR_HWY", "to": "NODE_KHOPOLI_HWY", "distanceMeters": 15200, "durationSeconds": 608, "speedKmh": 90 },
+
+      { "from": "NODE_KHALAPUR_HWY", "to": "REST_02_MEDIAN", "distanceMeters": 50, "durationSeconds": 0, "hasMedianBarrier": true, "isForbidden": true },
+      { "from": "NODE_KHALAPUR_MUMBAI_BOUND", "to": "REST_02_MEDIAN", "distanceMeters": 80, "durationSeconds": 10, "speedKmh": 40 },
+
+      { "from": "NODE_KHOPOLI_HWY", "to": "NODE_KHOPOLI_OFF", "distanceMeters": 200, "durationSeconds": 25, "speedKmh": 40, "isTurn": true },
+      { "from": "NODE_KHOPOLI_OFF", "to": "REST_04_VALLEY", "distanceMeters": 1700, "durationSeconds": 210, "speedKmh": 35 },
+      { "from": "REST_04_VALLEY", "to": "NODE_KHOPOLI_OFF", "distanceMeters": 1700, "durationSeconds": 210, "speedKmh": 35 },
+      { "from": "NODE_KHOPOLI_OFF", "to": "NODE_LONAVALA_HWY", "distanceMeters": 14800, "durationSeconds": 650, "speedKmh": 80 },
+      { "from": "NODE_KHOPOLI_HWY", "to": "NODE_LONAVALA_HWY", "distanceMeters": 15000, "durationSeconds": 650, "speedKmh": 85 },
+
+      { "from": "NODE_LONAVALA_HWY", "to": "NODE_LONAVALA_OFF", "distanceMeters": 150, "durationSeconds": 20, "speedKmh": 45, "isTurn": true },
+      { "from": "NODE_LONAVALA_OFF", "to": "NODE_LONAVALA_UTURN", "distanceMeters": 200, "durationSeconds": 25, "speedKmh": 30, "isUTurn": true },
+      { "from": "NODE_LONAVALA_UTURN", "to": "REST_03_OVERPASS", "distanceMeters": 325, "durationSeconds": 40, "speedKmh": 35 },
+      { "from": "REST_03_OVERPASS", "to": "NODE_LONAVALA_ON", "distanceMeters": 325, "durationSeconds": 40, "speedKmh": 35 },
+
+      { "from": "NODE_LONAVALA_OFF", "to": "REST_09_RAMP", "distanceMeters": 120, "durationSeconds": 15, "speedKmh": 40 },
+      { "from": "REST_09_RAMP", "to": "NODE_LONAVALA_ON", "distanceMeters": 140, "durationSeconds": 18, "speedKmh": 40 },
+
+      { "from": "NODE_LONAVALA_ON", "to": "NODE_TALEGAON_HWY", "distanceMeters": 20000, "durationSeconds": 800, "speedKmh": 90 },
+      { "from": "NODE_LONAVALA_HWY", "to": "NODE_TALEGAON_HWY", "distanceMeters": 20200, "durationSeconds": 808, "speedKmh": 90 },
+
+      { "from": "NODE_TALEGAON_HWY", "to": "NODE_TALEGAON_OFF", "distanceMeters": 150, "durationSeconds": 20, "speedKmh": 45, "isTurn": true },
+      { "from": "NODE_TALEGAON_OFF", "to": "REST_05_RAMP", "distanceMeters": 180, "durationSeconds": 20, "speedKmh": 35 },
+      { "from": "REST_05_RAMP", "to": "NODE_TALEGAON_ON", "distanceMeters": 180, "durationSeconds": 20, "speedKmh": 40 },
+      { "from": "NODE_TALEGAON_OFF", "to": "REST_06_RAMP", "distanceMeters": 150, "durationSeconds": 18, "speedKmh": 35 },
+      { "from": "REST_06_RAMP", "to": "NODE_TALEGAON_ON", "distanceMeters": 150, "durationSeconds": 18, "speedKmh": 40 },
+
+      { "from": "NODE_TALEGAON_ON", "to": "NODE_SOMATNE_HWY", "distanceMeters": 15000, "durationSeconds": 600, "speedKmh": 90 },
+      { "from": "NODE_TALEGAON_HWY", "to": "NODE_SOMATNE_HWY", "distanceMeters": 15200, "durationSeconds": 608, "speedKmh": 90 },
+
+      { "from": "NODE_SOMATNE_HWY", "to": "NODE_SOMATNE_OFF", "distanceMeters": 120, "durationSeconds": 15, "speedKmh": 40, "isTurn": true },
+      { "from": "NODE_SOMATNE_OFF", "to": "REST_10_RAMP", "distanceMeters": 140, "durationSeconds": 18, "speedKmh": 35 },
+      { "from": "REST_10_RAMP", "to": "NODE_SOMATNE_ON", "distanceMeters": 140, "durationSeconds": 18, "speedKmh": 40 },
+      { "from": "NODE_SOMATNE_OFF", "to": "REST_11_RAMP", "distanceMeters": 190, "durationSeconds": 22, "speedKmh": 35 },
+      { "from": "REST_11_RAMP", "to": "NODE_SOMATNE_ON", "distanceMeters": 190, "durationSeconds": 22, "speedKmh": 40 },
+
+      { "from": "NODE_SOMATNE_ON", "to": "NODE_PUNE_END", "distanceMeters": 18000, "durationSeconds": 720, "speedKmh": 90 },
+      { "from": "NODE_SOMATNE_HWY", "to": "NODE_PUNE_END", "distanceMeters": 18200, "durationSeconds": 728, "speedKmh": 90 }
+    ]
+  },
+  "restaurants": [
+    {
+      "id": "rest_01_green",
+      "name": "Expressway Food Court Khalapur",
+      "caseType": "1. Close to route, accessible (GREEN)",
+      "location": [18.8355, 73.3090],
+      "address": "KM 65 Expressway Rest Plaza, Khalapur",
+      "rating": 4.5,
+      "reviewCount": 1420,
+      "priceRange": "$$",
+      "cuisineType": "Multi-Cuisine Court",
+      "categories": ["Lunch", "Fast Food", "Quick Bites", "Coffee"],
+      "dietaryOptions": ["Vegetarian", "Halal"],
+      "openingHours": { "open": "06:00", "close": "23:00" },
+      "averageDineMinutes": 25,
+      "hasDriveThru": true,
+      "accessPoint": {
+        "id": "ap_01",
+        "roadNodeId": "REST_01_RAMP",
+        "rejoinNodeId": "NODE_KHALAPUR_ON",
+        "location": [18.8355, 73.3090],
+        "accessClass": "GREEN"
+      },
+      "dataSource": "sample-demo"
+    },
+    {
+      "id": "rest_02_red",
+      "name": "Median Barrier Mumbai-Bound Dhaba",
+      "caseType": "2. Opposite carriageway (RED)",
+      "location": [18.8340, 73.3070],
+      "address": "Opposite Carriageway KM 65, Khalapur",
+      "rating": 4.1,
+      "reviewCount": 310,
+      "priceRange": "$$",
+      "cuisineType": "Punjabi Dhaba",
+      "categories": ["Lunch", "Dinner"],
+      "dietaryOptions": ["Vegetarian"],
+      "openingHours": { "open": "07:00", "close": "23:00" },
+      "averageDineMinutes": 35,
+      "hasDriveThru": false,
+      "accessPoint": {
+        "id": "ap_02",
+        "roadNodeId": "REST_02_MEDIAN",
+        "rejoinNodeId": "NODE_KHALAPUR_ON",
+        "location": [18.8340, 73.3070],
+        "accessClass": "RED"
+      },
+      "dataSource": "sample-demo"
+    },
+    {
+      "id": "rest_03_yellow",
+      "name": "Lonavala Ghat View Restaurant",
+      "caseType": "3. Needs a legal U-turn (YELLOW)",
+      "location": [18.7535, 73.4110],
+      "address": "Exit Loop 4 Overpass, Lonavala",
+      "rating": 4.4,
+      "reviewCount": 890,
+      "priceRange": "$$",
+      "cuisineType": "Maharashtrian & North Indian",
+      "categories": ["Lunch", "Dinner", "Snacks"],
+      "dietaryOptions": ["Vegetarian"],
+      "openingHours": { "open": "10:00", "close": "23:00" },
+      "averageDineMinutes": 35,
+      "hasDriveThru": false,
+      "accessPoint": {
+        "id": "ap_03",
+        "roadNodeId": "REST_03_OVERPASS",
+        "rejoinNodeId": "NODE_LONAVALA_ON",
+        "location": [18.7535, 73.4110],
+        "accessClass": "YELLOW"
+      },
+      "dataSource": "sample-demo"
+    },
+    {
+      "id": "rest_04_excessive_detour",
+      "name": "Old Khopoli Valley Heritage Inn",
+      "caseType": "4. Long diversion (Excessive detour)",
+      "location": [18.7885, 73.3420],
+      "address": "Valley Bypass Rd, Khopoli Village",
+      "rating": 4.6,
+      "reviewCount": 210,
+      "priceRange": "$$$",
+      "cuisineType": "Heritage Dine-In",
+      "categories": ["Lunch", "Dinner"],
+      "dietaryOptions": ["Vegetarian", "Vegan"],
+      "openingHours": { "open": "11:00", "close": "22:00" },
+      "averageDineMinutes": 60,
+      "hasDriveThru": false,
+      "accessPoint": {
+        "id": "ap_04",
+        "roadNodeId": "REST_04_VALLEY",
+        "rejoinNodeId": "NODE_LONAVALA_HWY",
+        "location": [18.7750, 73.3420],
+        "accessClass": "YELLOW"
+      },
+      "dataSource": "sample-demo"
+    },
+    {
+      "id": "rest_05_closed_eta",
+      "name": "Twilight Sunset Grill & Bar",
+      "caseType": "5. Closed at the demo ETA",
+      "location": [18.7205, 73.6515],
+      "address": "Talegaon Overlook KM 115",
+      "rating": 4.7,
+      "reviewCount": 450,
+      "priceRange": "$$$",
+      "cuisineType": "Bar & Barbecue",
+      "categories": ["Dinner", "Late Night"],
+      "dietaryOptions": [],
+      "openingHours": { "open": "18:00", "close": "23:30" },
+      "averageDineMinutes": 45,
+      "hasDriveThru": false,
+      "accessPoint": {
+        "id": "ap_05",
+        "roadNodeId": "REST_05_RAMP",
+        "rejoinNodeId": "NODE_TALEGAON_ON",
+        "location": [18.7205, 73.6515],
+        "accessClass": "GREEN"
+      },
+      "dataSource": "sample-demo"
+    },
+    {
+      "id": "rest_06_no_lunch",
+      "name": "Sunrise Early Waffle & Bakery",
+      "caseType": "6. Lunch unavailable at the demo ETA",
+      "location": [18.7210, 73.6510],
+      "address": "Talegaon Service Rd KM 115",
+      "rating": 4.5,
+      "reviewCount": 380,
+      "priceRange": "$",
+      "cuisineType": "Bakery & Waffles",
+      "categories": ["Breakfast", "Pancakes", "Bakery"],
+      "dietaryOptions": ["Vegetarian"],
+      "openingHours": { "open": "06:00", "close": "15:00" },
+      "averageDineMinutes": 20,
+      "hasDriveThru": true,
+      "accessPoint": {
+        "id": "ap_06",
+        "roadNodeId": "REST_06_RAMP",
+        "rejoinNodeId": "NODE_TALEGAON_ON",
+        "location": [18.7210, 73.6510],
+        "accessClass": "GREEN"
+      },
+      "dataSource": "sample-demo"
+    },
+    {
+      "id": "rest_07_top_pick",
+      "name": "Premier Express Pitstop & Roastery",
+      "caseType": "7. Excellent accessibility with a tiny detour (Designed Rank #1)",
+      "location": [18.8360, 73.3085],
+      "address": "Expressway Plaza Direct Slip Road KM 65, Khalapur",
+      "rating": 4.9,
+      "reviewCount": 2100,
+      "priceRange": "$$",
+      "cuisineType": "Gourmet Deli & Specialty Coffee",
+      "categories": ["Lunch", "Coffee", "Burgers", "Quick Bites", "Sandwiches"],
+      "dietaryOptions": ["Vegetarian", "Vegan", "Halal"],
+      "openingHours": { "open": "00:00", "close": "23:59" },
+      "averageDineMinutes": 15,
+      "hasDriveThru": true,
+      "accessPoint": {
+        "id": "ap_07",
+        "roadNodeId": "REST_07_ENTRY",
+        "rejoinNodeId": "NODE_KHALAPUR_ON",
+        "location": [18.8360, 73.3085],
+        "accessClass": "GREEN"
+      },
+      "dataSource": "sample-demo"
+    },
+    {
+      "id": "rest_08_unverified",
+      "name": "Ghat Mystery Fruit Stand & Tea",
+      "caseType": "8. Missing road data (UNVERIFIED)",
+      "location": [18.7510, 73.4070],
+      "address": "Unmarked Mountain Path, Khandala",
+      "rating": 4.3,
+      "reviewCount": 85,
+      "priceRange": "$",
+      "cuisineType": "Tea & Farm Produce",
+      "categories": ["Lunch", "Snacks", "Tea"],
+      "dietaryOptions": ["Vegetarian", "Vegan"],
+      "openingHours": { "open": "08:00", "close": "18:00" },
+      "averageDineMinutes": 10,
+      "hasDriveThru": false,
+      "accessPoint": {
+        "id": "ap_08",
+        "roadNodeId": "UNMAPPED_NODE_999",
+        "rejoinNodeId": "UNMAPPED_NODE_999",
+        "location": [18.7510, 73.4070],
+        "accessClass": "UNVERIFIED"
+      },
+      "dataSource": "sample-demo"
+    },
+    {
+      "id": "rest_09_midnight",
+      "name": "Night Owl 24/7 Ghat Diner",
+      "caseType": "9. Closing time past midnight",
+      "location": [18.7540, 73.4095],
+      "address": "Expressway Lonavala Toll Slip, KM 96",
+      "rating": 4.5,
+      "reviewCount": 780,
+      "priceRange": "$$",
+      "cuisineType": "American Diner & All-Day Breakfast",
+      "categories": ["Lunch", "Dinner", "Late Night", "Burgers"],
+      "dietaryOptions": ["Vegetarian"],
+      "openingHours": { "open": "11:00", "close": "03:00" },
+      "averageDineMinutes": 25,
+      "hasDriveThru": true,
+      "accessPoint": {
+        "id": "ap_09",
+        "roadNodeId": "REST_09_RAMP",
+        "rejoinNodeId": "NODE_LONAVALA_ON",
+        "location": [18.7540, 73.4095],
+        "accessClass": "GREEN"
+      },
+      "dataSource": "sample-demo"
+    },
+    {
+      "id": "rest_10_vegan_budget",
+      "name": "Green Earth Pure Veg & Vegan Cafe",
+      "caseType": "10. Varied cuisine, price, diet (Vegan, $)",
+      "location": [18.6860, 73.7210],
+      "address": "Somatne Toll Plaza Annex KM 130",
+      "rating": 4.6,
+      "reviewCount": 540,
+      "priceRange": "$",
+      "cuisineType": "Vegan Healthy Bowls",
+      "categories": ["Lunch", "Salads", "Bowls", "Vegetarian"],
+      "dietaryOptions": ["Vegan", "Vegetarian", "Gluten-Free"],
+      "openingHours": { "open": "08:00", "close": "22:00" },
+      "averageDineMinutes": 20,
+      "hasDriveThru": false,
+      "accessPoint": {
+        "id": "ap_10",
+        "roadNodeId": "REST_10_RAMP",
+        "rejoinNodeId": "NODE_SOMATNE_ON",
+        "location": [18.6860, 73.7210],
+        "accessClass": "GREEN"
+      },
+      "dataSource": "sample-demo"
+    },
+    {
+      "id": "rest_11_seafood_luxury",
+      "name": "Royal Coastal Seafood Retreat",
+      "caseType": "11. Varied cuisine, price, diet (Luxury Seafood, $$$$)",
+      "location": [18.6870, 73.7220],
+      "address": "Somatne Scenic Overlook KM 130",
+      "rating": 4.7,
+      "reviewCount": 620,
+      "priceRange": "$$$$",
+      "cuisineType": "Coastal Fine Dining",
+      "categories": ["Lunch", "Dinner", "Seafood"],
+      "dietaryOptions": ["Halal", "Pescatarian"],
+      "openingHours": { "open": "11:30", "close": "23:00" },
+      "averageDineMinutes": 50,
+      "hasDriveThru": false,
+      "accessPoint": {
+        "id": "ap_11",
+        "roadNodeId": "REST_11_RAMP",
+        "rejoinNodeId": "NODE_SOMATNE_ON",
+        "location": [18.6870, 73.7220],
+        "accessClass": "GREEN"
+      },
+      "dataSource": "sample-demo"
+    },
+    {
+      "id": "rest_12_quick_burgers",
+      "name": "Express Burger & Shake Drive-Thru",
+      "caseType": "12. Varied cuisine, price, diet (Fast Food Burger, $, Halal)",
+      "location": [18.8370, 73.3095],
+      "address": "Khalapur Exit Plaza KM 65",
+      "rating": 4.3,
+      "reviewCount": 490,
+      "priceRange": "$",
+      "cuisineType": "Burgers & Shakes",
+      "categories": ["Lunch", "Burgers", "Fast Food", "Quick Bites"],
+      "dietaryOptions": ["Halal"],
+      "openingHours": { "open": "09:00", "close": "23:00" },
+      "averageDineMinutes": 15,
+      "hasDriveThru": true,
+      "accessPoint": {
+        "id": "ap_12",
+        "roadNodeId": "REST_12_RAMP",
+        "rejoinNodeId": "NODE_KHALAPUR_ON",
+        "location": [18.8370, 73.3095],
+        "accessClass": "GREEN"
+      },
+      "dataSource": "sample-demo"
+    }
+  ]
+}
