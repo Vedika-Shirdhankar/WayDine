@@ -1,6 +1,7 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { ToastProvider } from './components/Toast.jsx';
+import { AuthProvider } from './context/AuthContext.jsx';
 import { JourneyProvider } from './context/JourneyContext.jsx';
 import { ErrorBoundary } from './components/ErrorBoundary.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
@@ -47,12 +48,14 @@ export default function App() {
   return (
     <ToastProvider>
       <BrowserRouter>
-        <JourneyProvider>
-          <Routes>
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/*" element={<AppLayout />} />
-          </Routes>
-        </JourneyProvider>
+        <AuthProvider>
+          <JourneyProvider>
+            <Routes>
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/*" element={<AppLayout />} />
+            </Routes>
+          </JourneyProvider>
+        </AuthProvider>
       </BrowserRouter>
     </ToastProvider>
   );

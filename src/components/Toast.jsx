@@ -1,7 +1,34 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { CheckCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 const ToastContext = createContext(null);
+
+let globalToastDispatcher = null;
+
+/**
+ * Registers a global callback for showing toasts outside React components.
+ * @param {(message: string, type?: string, duration?: number) => void} fn
+ */
+export function registerGlobalToast(fn) {
+  globalToastDispatcher = fn;
+  return () => {
+    if (globalToastDispatcher === fn) globalToastDispatcher = null;
+  };
+}
+
+/**
+ * Emits a toast notification from anywhere in the application (even outside React tree).
+ * @param {string} message
+ * @param {'info' | 'success' | 'warning' | 'danger'} [type]
+ * @param {number} [duration]
+ */
+export function showToast(message, type = 'info', duration = 3500) {
+  if (typeof globalToastDispatcher === 'function') {
+    globalToastDispatcher(message, type, duration);
+  } else if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('waydine:toast', { detail: { message, type, duration } }));
+  }
+}
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
@@ -17,6 +44,24 @@ export function ToastProvider({ children }) {
   const removeToast = useCallback((id) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
+
+  useEffect(() => {
+    const unregister = registerGlobalToast(addToast);
+    const handleCustomToast = (e) => {
+      if (e.detail?.message) {
+        addToast(e.detail.message, e.detail.type || 'info', e.detail.duration || 3500);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('waydine:toast', handleCustomToast);
+    }
+    return () => {
+      unregister();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('waydine:toast', handleCustomToast);
+      }
+    };
+  }, [addToast]);
 
   return (
     <ToastContext.Provider value={{ addToast }}>

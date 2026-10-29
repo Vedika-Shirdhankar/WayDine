@@ -17,14 +17,48 @@ BEGIN
   END IF;
 END $$;
 
--- 2. Users Table
-CREATE TABLE IF NOT EXISTS public.users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  email TEXT UNIQUE NOT NULL,
-  full_name TEXT,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+-- 2. Users Table (Integrated with Supabase Auth)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
+    CREATE TABLE IF NOT EXISTS public.users (
+      id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+      email TEXT UNIQUE,
+      full_name TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  ELSE
+    CREATE TABLE IF NOT EXISTS public.users (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      email TEXT UNIQUE NOT NULL,
+      full_name TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+  END IF;
+END $$;
+
+-- Supabase Auth Auto-Sync Trigger
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.users (id, email, full_name)
+  VALUES (new.id, new.email, new.raw_user_meta_data->>'full_name')
+  ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email;
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_namespace WHERE nspname = 'auth') THEN
+    DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+    CREATE TRIGGER on_auth_user_created
+      AFTER INSERT ON auth.users
+      FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+  END IF;
+END $$;
 
 -- 3. User Preferences Table
 CREATE TABLE IF NOT EXISTS public.user_preferences (
@@ -38,7 +72,8 @@ CREATE TABLE IF NOT EXISTS public.user_preferences (
   preferred_price_range TEXT CHECK (preferred_price_range IN ('$', '$$', '$$$', '$$$$')),
   weights JSONB NOT NULL DEFAULT '{"detourEfficiency": 30, "directionCompatibility": 25, "roadAccessibility": 20, "foodAvailability": 15, "timeCompatibility": 10}'::jsonb,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CONSTRAINT uq_user_preferences_user UNIQUE (user_id)
 );
 
 -- 4. Roads Table
@@ -63,6 +98,7 @@ CREATE TABLE IF NOT EXISTS public.road_segments (
   to_lng NUMERIC(9,6) NOT NULL CHECK (to_lng BETWEEN -180 AND 180),
   distance_meters INTEGER NOT NULL CHECK (distance_meters >= 0),
   duration_seconds INTEGER NOT NULL CHECK (duration_seconds >= 0),
+  speed_limit_kmh INTEGER NOT NULL DEFAULT 80 CHECK (speed_limit_kmh > 0),
   is_one_way BOOLEAN NOT NULL DEFAULT TRUE,
   is_u_turn BOOLEAN NOT NULL DEFAULT FALSE,
   is_turn BOOLEAN NOT NULL DEFAULT FALSE,
@@ -135,6 +171,7 @@ CREATE TABLE IF NOT EXISTS public.routes (
 CREATE TABLE IF NOT EXISTS public.pitstop_recommendations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   route_id TEXT REFERENCES public.routes(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES public.users(id) ON DELETE CASCADE,
   restaurant_id TEXT NOT NULL REFERENCES public.restaurants(id) ON DELETE CASCADE,
   rank INTEGER NOT NULL CHECK (rank >= 1),
   final_score NUMERIC(5,2) NOT NULL CHECK (final_score BETWEEN 0 AND 100),
@@ -164,14 +201,15 @@ CREATE INDEX IF NOT EXISTS idx_restaurants_cuisine ON public.restaurants(cuisine
 CREATE INDEX IF NOT EXISTS idx_restaurant_access_restaurant ON public.restaurant_access_points(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_food_availability_restaurant ON public.restaurant_food_availability(restaurant_id);
 CREATE INDEX IF NOT EXISTS idx_recommendations_route_rank ON public.pitstop_recommendations(route_id, rank);
+CREATE INDEX IF NOT EXISTS idx_recommendations_user ON public.pitstop_recommendations(user_id);
 CREATE INDEX IF NOT EXISTS idx_preferences_user ON public.user_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_history_user ON public.pitstop_history(user_id);
 
 -- Optional PostGIS spatial index block
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'postgis') THEN
     BEGIN
-      -- Add geometry column if postgis exists
       ALTER TABLE public.restaurants ADD COLUMN IF NOT EXISTS geom geometry(Point, 4326);
       UPDATE public.restaurants SET geom = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326) WHERE geom IS NULL;
       CREATE INDEX IF NOT EXISTS idx_restaurants_geom ON public.restaurants USING GIST(geom);
@@ -182,30 +220,52 @@ BEGIN
   END IF;
 END $$;
 
+-- =====================================================================
 -- Row Level Security (RLS) Policies
-ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.routes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.pitstop_history ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.restaurants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.road_segments ENABLE ROW LEVEL SECURITY;
+-- - restaurants, roads, and road_segments are publicly readable
+-- - routes, recommendations, history, and preferences are readable
+--   and writable only by their owner (auth.uid() = user_id)
+-- =====================================================================
 
--- Public read access for roads and restaurants
-CREATE POLICY "Public restaurants are readable by everyone" ON public.restaurants
+ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.roads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.road_segments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_access_points ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.restaurant_food_availability ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.routes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pitstop_recommendations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pitstop_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
+
+-- 1. Publicly readable tables
+CREATE POLICY "Public roads are readable by everyone" ON public.roads
   FOR SELECT USING (true);
 
 CREATE POLICY "Public road segments are readable by everyone" ON public.road_segments
   FOR SELECT USING (true);
 
--- User-specific policies
-CREATE POLICY "Users can manage their own profile" ON public.users
-  FOR ALL USING (auth.uid() = id);
+CREATE POLICY "Public restaurants are readable by everyone" ON public.restaurants
+  FOR SELECT USING (true);
 
-CREATE POLICY "Users can manage their own preferences" ON public.user_preferences
-  FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Public access points are readable by everyone" ON public.restaurant_access_points
+  FOR SELECT USING (true);
 
-CREATE POLICY "Users can read/write their own routes" ON public.routes
-  FOR ALL USING (auth.uid() = user_id OR user_id IS NULL);
+CREATE POLICY "Public food availability is readable by everyone" ON public.restaurant_food_availability
+  FOR SELECT USING (true);
 
-CREATE POLICY "Users can view their own pitstop history" ON public.pitstop_history
-  FOR ALL USING (auth.uid() = user_id OR user_id IS NULL);
+-- 2. Owner-only tables: auth.uid() = user_id
+CREATE POLICY "Users can manage own profile" ON public.users
+  FOR ALL USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can manage own preferences" ON public.user_preferences
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage own routes" ON public.routes
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage own recommendations" ON public.pitstop_recommendations
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage own pitstop history" ON public.pitstop_history
+  FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
