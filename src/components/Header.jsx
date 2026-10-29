@@ -84,12 +84,16 @@ export function Header() {
         {/* User Account Pill */}
         <NavLink
           to="/login"
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-card hover:bg-cardHover border border-borderSubtle text-xs font-semibold text-textMain transition-colors"
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border text-xs font-semibold transition-colors ${
+            user
+              ? 'bg-accent/15 border-accent/40 text-accent font-bold shadow-glow-accent'
+              : 'bg-card hover:bg-cardHover border-borderSubtle text-textMain'
+          }`}
           title={user ? `Signed in as ${user.email}` : 'Sign in or switch to guest mode'}
         >
           <User className={`w-3.5 h-3.5 ${user ? 'text-accent' : 'text-muted'}`} />
-          <span className="hidden md:inline max-w-[110px] truncate">
-            {user ? user.email.split('@')[0] : 'Guest'}
+          <span className="hidden sm:inline max-w-[130px] truncate">
+            {user ? (user.user_metadata?.full_name || user.email?.split('@')[0]) : 'Guest'}
           </span>
         </NavLink>
 

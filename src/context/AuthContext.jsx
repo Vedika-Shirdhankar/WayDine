@@ -85,6 +85,10 @@ export function AuthProvider({ children }) {
     }
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    if (data?.user) {
+      setUser(data.user);
+      setSession(data.session);
+    }
     return data;
   }, []);
 
@@ -100,6 +104,10 @@ export function AuthProvider({ children }) {
       }
     });
     if (error) throw error;
+    if (data?.user && data?.session) {
+      setUser(data.user);
+      setSession(data.session);
+    }
     return data;
   }, []);
 

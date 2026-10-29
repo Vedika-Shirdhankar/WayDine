@@ -32,9 +32,16 @@ export function LoginPage() {
       if (mode === 'signin') {
         await signIn(email, password);
         addToast('Welcome back! Signed in successfully.', 'success');
+        navigate('/dashboard');
       } else {
-        await signUp(email, password, fullName);
-        addToast('Account created successfully! Check your email if verification is required.', 'success');
+        const data = await signUp(email, password, fullName);
+        if (data?.session) {
+          addToast('Account created and signed in successfully!', 'success');
+          navigate('/dashboard');
+        } else {
+          addToast('Account created! Please check your email if confirmation is required.', 'info');
+          setMode('signin');
+        }
       }
     } catch (err) {
       setErrorMsg(err.message || 'Authentication failed. Please verify credentials.');
