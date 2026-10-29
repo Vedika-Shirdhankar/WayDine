@@ -21,10 +21,16 @@ export function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={{ addToast }}>
       {children}
-      <div className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 max-w-sm pointer-events-none">
+      <div
+        role="region"
+        aria-live="polite"
+        aria-label="Notifications"
+        className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 max-w-sm pointer-events-none"
+      >
         {toasts.map(toast => (
           <div
             key={toast.id}
+            role="alert"
             className={`pointer-events-auto flex items-center justify-between p-3.5 rounded-xl border shadow-xl backdrop-blur-md transition-all duration-300 animate-slide-up ${
               toast.type === 'success'
                 ? 'bg-[#102a1e]/90 border-success/40 text-success'
@@ -44,6 +50,7 @@ export function ToastProvider({ children }) {
             </div>
             <button
               onClick={() => removeToast(toast.id)}
+              aria-label="Dismiss notification"
               className="ml-3 p-1 rounded hover:bg-white/10 text-muted hover:text-white transition-colors"
             >
               <X className="w-3.5 h-3.5" />

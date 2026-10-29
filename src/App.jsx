@@ -1,20 +1,58 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './components/Toast.jsx';
+import { JourneyProvider } from './context/JourneyContext.jsx';
+import { ErrorBoundary } from './components/ErrorBoundary.jsx';
+import { Sidebar } from './components/Sidebar.jsx';
+import { Header } from './components/Header.jsx';
+import { LandingPage } from './pages/LandingPage.jsx';
 import { Dashboard } from './pages/Dashboard.jsx';
-import { EngineLab } from './pages/EngineLab.jsx';
-import { RoadGraphViewer } from './pages/RoadGraphViewer.jsx';
+import { PitstopsPage } from './pages/PitstopsPage.jsx';
+import { RestaurantDetailPage } from './pages/RestaurantDetailPage.jsx';
+import { SimulatorPage } from './pages/SimulatorPage.jsx';
+import { AnalyticsPage } from './pages/AnalyticsPage.jsx';
+import { PreferencesPage } from './pages/PreferencesPage.jsx';
+import { SettingsPage } from './pages/SettingsPage.jsx';
+import { LoginPage } from './pages/LoginPage.jsx';
+import { NotFoundPage } from './pages/NotFoundPage.jsx';
+
+/** Root app shell: providers → layout → routes */
+function AppLayout() {
+  return (
+    <div className="flex min-h-screen bg-background text-textMain">
+      <Sidebar />
+      <div className="flex-1 flex flex-col min-w-0">
+        <Header />
+        <main className="flex-1 overflow-auto">
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/pitstops" element={<PitstopsPage />} />
+              <Route path="/restaurant/:id" element={<RestaurantDetailPage />} />
+              <Route path="/simulator" element={<SimulatorPage />} />
+              <Route path="/analytics" element={<AnalyticsPage />} />
+              <Route path="/preferences" element={<PreferencesPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </ErrorBoundary>
+        </main>
+      </div>
+    </div>
+  );
+}
 
 export default function App() {
   return (
     <ToastProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/engine-lab" element={<EngineLab />} />
-          <Route path="/road-graph" element={<RoadGraphViewer />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <JourneyProvider>
+          <Routes>
+            <Route path="/" element={<LandingPage />} />
+            <Route path="/*" element={<AppLayout />} />
+          </Routes>
+        </JourneyProvider>
       </BrowserRouter>
     </ToastProvider>
   );
