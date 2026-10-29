@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Compass, Zap, Lock, ArrowRight, Info, User, CheckCircle2, AlertCircle, LogOut, Download } from 'lucide-react';
+import { Compass, Zap, ArrowRight, CheckCircle2, AlertCircle, LogOut, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 
@@ -55,195 +55,6 @@ export function LoginPage() {
     }
   };
 
-  function LoggedInView() {
-    return (
-      <div className="space-y-4">
-        <div className="p-4 rounded-xl bg-secondary/80 border border-success/30 flex items-start gap-3">
-          <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <h3 className="text-xs font-bold text-textMain">Signed In via Supabase</h3>
-            <p className="text-[11px] text-muted">{user?.email}</p>
-            <p className="text-[10px] text-muted">
-              Preferences and pitstop history are now synced directly to your Supabase cloud database.
-            </p>
-          </div>
-        </div>
-
-        {guestHistoryCount > 0 && (
-          <div className="p-3.5 rounded-xl bg-accent/10 border border-accent/40 space-y-2">
-            <div className="flex items-center gap-2 text-xs font-bold text-accent">
-              <Download className="w-4 h-4" />
-              <span>Import Guest History</span>
-            </div>
-            <p className="text-[11px] text-textMain">
-              You have <strong>{guestHistoryCount}</strong> pitstop(s) saved from offline guest mode on this device.
-              Would you like to import them to your account?
-            </p>
-            <button
-              onClick={handleImport}
-              disabled={importing}
-              className="w-full py-2 px-3 rounded-lg bg-accent hover:bg-accentHover text-background text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-glow-accent disabled:opacity-50"
-            >
-              <Download className="w-3.5 h-3.5" />
-              {importing ? 'Importing...' : `Import ${guestHistoryCount} Pitstop(s) Now`}
-            </button>
-          </div>
-        )}
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="flex-1 py-2.5 rounded-xl bg-accent hover:bg-accentHover text-background text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-glow-accent transition-all"
-          >
-            <span>Go to Dashboard</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
-          <button
-            onClick={signOut}
-            className="py-2.5 px-4 rounded-xl bg-secondary hover:bg-white/10 text-muted hover:text-textMain border border-borderSubtle text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
-          >
-            <LogOut className="w-4 h-4" />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  function SupabaseForm() {
-    return (
-      <div className="space-y-4">
-        {/* Toggle Sign In / Sign Up */}
-        <div className="flex rounded-xl bg-secondary p-1 border border-borderSubtle">
-          <button
-            type="button"
-            onClick={() => { setMode('signin'); setErrorMsg(''); }}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              mode === 'signin' ? 'bg-accent text-background shadow-sm' : 'text-muted hover:text-textMain'
-            }`}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => { setMode('signup'); setErrorMsg(''); }}
-            className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              mode === 'signup' ? 'bg-accent text-background shadow-sm' : 'text-muted hover:text-textMain'
-            }`}
-          >
-            Create Account
-          </button>
-        </div>
-
-        {errorMsg && (
-          <div className="p-3 rounded-xl bg-danger/10 border border-danger/30 text-[11px] text-danger flex items-start gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{errorMsg}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-3">
-          {mode === 'signup' && (
-            <div>
-              <label className="text-[11px] text-muted font-medium block mb-1">Full Name</label>
-              <input
-                type="text"
-                required
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Piyusha Sharma"
-                className="w-full bg-secondary border border-borderSubtle rounded-xl px-3 py-2 text-xs text-textMain placeholder-muted/50 focus:outline-none focus:border-accent"
-              />
-            </div>
-          )}
-
-          <div>
-            <label className="text-[11px] text-muted font-medium block mb-1">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="w-full bg-secondary border border-borderSubtle rounded-xl px-3 py-2 text-xs text-textMain placeholder-muted/50 focus:outline-none focus:border-accent"
-            />
-          </div>
-
-          <div>
-            <label className="text-[11px] text-muted font-medium block mb-1">Password</label>
-            <input
-              type="password"
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full bg-secondary border border-borderSubtle rounded-xl px-3 py-2 text-xs text-textMain placeholder-muted/50 focus:outline-none focus:border-accent"
-            />
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-2.5 rounded-xl bg-accent hover:bg-accentHover text-background text-xs font-extrabold flex items-center justify-center gap-2 shadow-glow-accent transition-all disabled:opacity-50"
-          >
-            {loading ? 'Please wait...' : (mode === 'signin' ? 'Sign In to Supabase' : 'Create Account')}
-          </button>
-        </form>
-
-        <div className="relative flex py-1 items-center">
-          <div className="flex-grow border-t border-borderSubtle"></div>
-          <span className="flex-shrink mx-2 text-[10px] text-muted uppercase tracking-wider">or</span>
-          <div className="flex-grow border-t border-borderSubtle"></div>
-        </div>
-
-        {/* Continue as Guest */}
-        <button
-          type="button"
-          onClick={() => navigate('/dashboard')}
-          className="w-full py-2.5 rounded-xl bg-secondary hover:bg-white/10 border border-borderSubtle text-textMain text-xs font-bold flex items-center justify-center gap-2 transition-all"
-        >
-          <Zap className="w-3.5 h-3.5 text-accent fill-current" />
-          <span>Continue as Guest (Offline / Demo)</span>
-          <ArrowRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
-    );
-  }
-
-  function GuestOnly() {
-    return (
-      <div className="space-y-4">
-        {/* Guest mode info box */}
-        <div className="p-3.5 rounded-xl bg-secondary border border-accent/30 text-[11px] text-muted flex items-start gap-2.5">
-          <Info className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-          <span>
-            No account required. All features work completely out-of-the-box offline.
-            Preferences and journeys are safely saved in your browser's localStorage.
-          </span>
-        </div>
-
-        <div className="p-3.5 rounded-xl bg-secondary border border-borderSubtle text-[11px] text-muted flex items-start gap-2.5">
-          <Lock className="w-4 h-4 text-accent shrink-0 mt-0.5" />
-          <span>
-            Supabase environment credentials (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY) are not set.
-            The demo is currently running on the high-fidelity Mumbai → Pune local dataset.
-          </span>
-        </div>
-
-        {/* Continue as Guest */}
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="w-full py-3 rounded-xl bg-accent hover:bg-accentHover text-background text-xs font-extrabold flex items-center justify-center gap-2 shadow-glow-accent transition-all"
-        >
-          <Zap className="w-4 h-4 fill-current" />
-          <span>Continue as Guest (Demo Mode)</span>
-          <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-[calc(100vh-56px)] flex items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-6">
@@ -263,11 +74,181 @@ export function LoginPage() {
           </h2>
 
           {user ? (
-            <LoggedInView />
+            /* Logged In View */
+            <div className="space-y-4">
+              <div className="p-4 rounded-xl bg-secondary/80 border border-success/30 flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <h3 className="text-xs font-bold text-textMain">Signed In via Supabase</h3>
+                  <p className="text-[11px] text-muted">{user?.email}</p>
+                  <p className="text-[10px] text-muted">
+                    Preferences and pitstop history are now synced directly to your Supabase cloud database.
+                  </p>
+                </div>
+              </div>
+
+              {guestHistoryCount > 0 && (
+                <div className="p-3.5 rounded-xl bg-accent/10 border border-accent/40 space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-bold text-accent">
+                    <Download className="w-4 h-4" />
+                    <span>Import Guest History</span>
+                  </div>
+                  <p className="text-[11px] text-textMain">
+                    You have <strong>{guestHistoryCount}</strong> pitstop(s) saved from offline guest mode on this device.
+                    Would you like to import them to your account?
+                  </p>
+                  <button
+                    onClick={handleImport}
+                    disabled={importing}
+                    className="w-full py-2 px-3 rounded-lg bg-accent hover:bg-accentHover text-background text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-glow-accent disabled:opacity-50"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {importing ? 'Importing...' : `Import ${guestHistoryCount} Pitstop(s) Now`}
+                  </button>
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="flex-1 py-2.5 rounded-xl bg-accent hover:bg-accentHover text-background text-xs font-extrabold flex items-center justify-center gap-1.5 shadow-glow-accent transition-all"
+                >
+                  <span>Go to Dashboard</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={signOut}
+                  className="py-2.5 px-4 rounded-xl bg-secondary hover:bg-white/10 text-muted hover:text-textMain border border-borderSubtle text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
           ) : isConfigured ? (
-            <SupabaseForm />
+            /* Supabase Active Form */
+            <div className="space-y-4">
+              {/* Toggle Sign In / Sign Up */}
+              <div className="flex rounded-xl bg-secondary p-1 border border-borderSubtle">
+                <button
+                  type="button"
+                  onClick={() => { setMode('signin'); setErrorMsg(''); }}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    mode === 'signin' ? 'bg-accent text-background shadow-sm' : 'text-muted hover:text-textMain'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setMode('signup'); setErrorMsg(''); }}
+                  className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                    mode === 'signup' ? 'bg-accent text-background shadow-sm' : 'text-muted hover:text-textMain'
+                  }`}
+                >
+                  Create Account
+                </button>
+              </div>
+
+              {errorMsg && (
+                <div className="p-3 rounded-xl bg-danger/10 border border-danger/30 text-[11px] text-danger flex items-start gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-3">
+                {mode === 'signup' && (
+                  <div>
+                    <label className="text-[11px] text-muted font-medium block mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Piyusha Sharma"
+                      className="w-full bg-secondary border border-borderSubtle rounded-xl px-3 py-2 text-xs text-textMain placeholder-muted/50 focus:outline-none focus:border-accent"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-[11px] text-muted font-medium block mb-1">Email</label>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="w-full bg-secondary border border-borderSubtle rounded-xl px-3 py-2 text-xs text-textMain placeholder-muted/50 focus:outline-none focus:border-accent"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] text-muted font-medium block mb-1">Password</label>
+                  <input
+                    type="password"
+                    required
+                    minLength={6}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-secondary border border-borderSubtle rounded-xl px-3 py-2 text-xs text-textMain placeholder-muted/50 focus:outline-none focus:border-accent"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-2.5 rounded-xl bg-accent hover:bg-accentHover text-background text-xs font-extrabold flex items-center justify-center gap-2 shadow-glow-accent transition-all disabled:opacity-50"
+                >
+                  {loading ? 'Please wait...' : (mode === 'signin' ? 'Sign In to Supabase' : 'Create Account')}
+                </button>
+              </form>
+
+              <div className="relative flex py-1 items-center">
+                <div className="flex-grow border-t border-borderSubtle"></div>
+                <span className="flex-shrink mx-2 text-[10px] text-muted uppercase tracking-wider">or</span>
+                <div className="flex-grow border-t border-borderSubtle"></div>
+              </div>
+
+              {/* Continue as Guest */}
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard')}
+                className="w-full py-2.5 rounded-xl bg-secondary hover:bg-white/10 border border-borderSubtle text-textMain text-xs font-bold flex items-center justify-center gap-2 transition-all"
+              >
+                <Zap className="w-3.5 h-3.5 text-accent fill-current" />
+                <span>Continue as Guest (Offline / Demo)</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           ) : (
-            <GuestOnly />
+            /* Unconfigured / Guest Only View */
+            <div className="space-y-4">
+              <div className="p-3.5 rounded-xl bg-secondary/80 border border-borderSubtle text-xs space-y-2">
+                <div className="flex items-center gap-2 font-bold text-textMain">
+                  <Zap className="w-4 h-4 text-accent" />
+                  <span>Guest Mode Active</span>
+                </div>
+                <p className="text-[11px] text-muted">
+                  Supabase credentials are not configured in your <code>.env</code> file. WayDine runs 100% locally with sample data.
+                </p>
+                <span className="text-[10px] text-muted block">
+                  The demo is currently running on the high-fidelity Mumbai → Pune local dataset.
+                </span>
+              </div>
+
+              {/* Continue as Guest */}
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="w-full py-3 rounded-xl bg-accent hover:bg-accentHover text-background text-xs font-extrabold flex items-center justify-center gap-2 shadow-glow-accent transition-all"
+              >
+                <Zap className="w-4 h-4 fill-current" />
+                <span>Continue as Guest (Demo Mode)</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            </div>
           )}
         </div>
 

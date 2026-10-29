@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { useJourneyEngine } from '../context/JourneyContext.jsx';
 import { toRupeeTier } from '../utils/indiaDefaults.js';
+import { getRepository } from '../data/restaurantRepository.js';
+import { showToast } from '../components/Toast.jsx';
 
 /** Sort options for pitstop list */
 const SORT_OPTIONS = [
@@ -126,7 +128,7 @@ function PitstopCard({ rec, onSelect, onCompare, onPreview, isSelected, isCompar
           <BarChart2 className="w-3.5 h-3.5" />{isComparing ? 'Comparing' : 'Compare'}
         </button>
         <button
-          onClick={() => onSelect(restaurant.id)}
+          onClick={() => onSelect(rec)}
           className={`py-1.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1 transition-all border ${
             isSelected
               ? 'bg-accent text-background border-transparent shadow-glow-accent'
@@ -167,6 +169,21 @@ export function PitstopsPage() {
 
   const [sortBy, setSortBy]     = useState('score');
   const [filterBy, setFilterBy] = useState('all');
+
+  const handleSelectPitstop = async (rec) => {
+    setSelectedRestaurantId(rec.restaurant.id);
+    try {
+      await getRepository().saveHistory({
+        restaurantId: rec.restaurant.id,
+        restaurantName: rec.restaurant.name,
+        score: rec.finalScore,
+        detourMeters: rec.detourResult?.detourDistanceMeters || 0,
+        routeId: 'demo',
+        timestamp: new Date().toISOString(),
+      });
+      showToast(`Selected "${rec.restaurant.name}" as pitstop!`, 'success');
+    } catch (e) { /* non-critical */ }
+  };
 
   const savedIds = useMemo(() => {
     try {
@@ -274,7 +291,7 @@ export function PitstopsPage() {
               isSelected={selectedRestaurantId === rec.restaurant.id}
               isComparing={compareList.some(r => r.id === rec.restaurant.id)}
               isPreviewing={previewDetourRestaurantId === rec.restaurant.id}
-              onSelect={(id) => setSelectedRestaurantId(id)}
+              onSelect={(rec) => handleSelectPitstop(rec)}
               onCompare={toggleCompareRestaurant}
               onPreview={(id) => setPreviewDetourRestaurantId(
                 previewDetourRestaurantId === id ? null : id

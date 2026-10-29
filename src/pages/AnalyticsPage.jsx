@@ -9,6 +9,7 @@ import {
   AlertTriangle, Clock, Utensils, History
 } from 'lucide-react';
 import { useJourneyEngine } from '../context/JourneyContext.jsx';
+import { getSupabaseClient } from '../services/supabaseClient.js';
 import {
   toRupeeTier, formatDistance, formatDateTimeIST, accessClassConfig
 } from '../utils/indiaDefaults.js';
@@ -86,13 +87,50 @@ export function AnalyticsPage() {
 
   const { eligible, rejected } = engineResults;
 
-  /* ─── Selection history from localStorage ─── */
+  /* ─── Selection history from Supabase / localStorage ─── */
   const [history, setHistory] = useState([]);
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem('waydine_history');
-      if (raw) setHistory(JSON.parse(raw).slice(0, 10));
-    } catch { /* ignore */ }
+    async function loadHistory() {
+      let localItems = [];
+      try {
+        const raw = localStorage.getItem('waydine_history');
+        if (raw) localItems = JSON.parse(raw).slice(0, 10);
+      } catch { /* ignore */ }
+      if (localItems.length > 0) setHistory(localItems);
+
+      try {
+        const client = getSupabaseClient();
+        if (client) {
+          const { data, error } = await client
+            .from('pitstop_history')
+            .select('*, restaurants(name)')
+            .order('selected_at', { ascending: false })
+            .limit(10);
+
+          if (!error && data && data.length > 0) {
+            const mapped = data.map(row => {
+              let parsedNotes = {};
+              try {
+                if (row.notes && row.notes.startsWith('{')) {
+                  parsedNotes = JSON.parse(row.notes);
+                }
+              } catch {}
+              return {
+                id: row.id,
+                restaurantId: row.restaurant_id,
+                restaurantName: row.restaurants?.name || parsedNotes.name || (row.notes ? row.notes.replace(/^Restaurant:\s*/, '') : 'Pitstop'),
+                selectedAt: row.selected_at,
+                score: parsedNotes.score ?? 90,
+                detourMeters: parsedNotes.detourMeters ?? 0,
+                notes: row.notes
+              };
+            });
+            setHistory(mapped);
+          }
+        }
+      } catch { /* non-critical */ }
+    }
+    loadHistory();
   }, []);
 
   /* ─── KPI computations ─── */

@@ -47,8 +47,12 @@ export class SupabaseRepository extends IWayDineRepository {
    */
   _handleMidSessionFailure(err, actionContext) {
     console.warn(`[SupabaseRepository] ${actionContext} failed, falling back to local seed:`, err.message || err);
-    this.isReachable = false;
-    showToast(`Supabase connection error during ${actionContext}. Using local fallback.`, 'warning');
+    // Don't treat RLS policy rejections on guest actions as network offline
+    const isRls = err.code === '42501' || (err.message && err.message.includes('row-level security'));
+    if (!isRls) {
+      this.isReachable = false;
+      showToast(`Supabase connection error during ${actionContext}. Using local fallback.`, 'warning');
+    }
   }
 
   /**
@@ -284,6 +288,11 @@ export class SupabaseRepository extends IWayDineRepository {
       return this.fallback.saveRecommendations(routeId, recommendations);
     }
 
+    // Persist to local fallback cache
+    try {
+      await this.fallback.saveRecommendations(routeId, recommendations);
+    } catch {}
+
     try {
       const user = await this._getCurrentUser();
       const rows = recommendations.map(rec => ({
@@ -320,9 +329,11 @@ export class SupabaseRepository extends IWayDineRepository {
       const user = await this._getCurrentUser();
       const effectiveUserId = entry.userId || user?.id;
 
-      // Guest mode without auth: save to localStorage via fallback
-      if (!effectiveUserId && !this._isMock) {
-        return this.fallback.saveHistory(entry);
+      // Also persist to local cache for instant offline fallback
+      try {
+        await this.fallback.saveHistory(entry);
+      } catch {
+        // ignore fallback cache error
       }
 
       const row = {
