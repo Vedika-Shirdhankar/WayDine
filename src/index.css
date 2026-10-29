@@ -27,7 +27,11 @@
   background: #334766;
 }
 
-/* Leaflet Dark Popup Customization */
+/* Leaflet Dark Theme & Popup Customization */
+.leaflet-tile-pane {
+  filter: brightness(0.6) invert(1) contrast(3) hue-rotate(200deg) saturate(0.3) brightness(0.7);
+}
+
 .leaflet-popup-content-wrapper, .leaflet-popup-tip {
   background: #151F30 !important;
   color: #F5F7FA !important;

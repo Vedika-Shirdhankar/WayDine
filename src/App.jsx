@@ -46,7 +46,8 @@ function AppLayout() {
 
 export default function App() {
   return (
-    <ToastProvider>
+    <ErrorBoundary>
+      <ToastProvider>
       <BrowserRouter>
         <AuthProvider>
           <JourneyProvider>
@@ -58,5 +59,6 @@ export default function App() {
         </AuthProvider>
       </BrowserRouter>
     </ToastProvider>
+    </ErrorBoundary>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { MapContainer, TileLayer, Polyline, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Radio, Eye, CheckCircle2, CornerDownRight, AlertTriangle } from 'lucide-react';
+import { Radio, Eye, CheckCircle2, CornerDownRight, AlertTriangle, Compass } from 'lucide-react';
 import { useJourneyEngine } from '../../context/JourneyContext.jsx';
 
 // Leaflet DivIcon Creators (fixes Vite default icon path bug)
@@ -79,11 +79,38 @@ function MapBoundsController({ coordinates }) {
   const map = useMap();
   useEffect(() => {
     if (coordinates && coordinates.length > 1) {
+      map.invalidateSize();
       const bounds = L.latLngBounds(coordinates);
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
     }
   }, [coordinates, map]);
   return null;
+}
+
+function RecenterControl({ coordinates }) {
+  const map = useMap();
+  const handleRecenter = (e) => {
+    e.stopPropagation();
+    if (coordinates && coordinates.length > 1) {
+      map.invalidateSize();
+      const bounds = L.latLngBounds(coordinates);
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
+    }
+  };
+
+  return (
+    <div className="absolute top-3 left-14 z-[1000] pointer-events-auto">
+      <button
+        type="button"
+        onClick={handleRecenter}
+        className="px-3 py-1.5 bg-secondary/90 hover:bg-secondary text-textMain border border-borderSubtle hover:border-accent rounded-xl text-xs font-semibold shadow-xl transition-all flex items-center gap-1.5 backdrop-blur-md cursor-pointer"
+        title="Fit map to full Mumbai-Pune route"
+      >
+        <Compass className="w-3.5 h-3.5 text-accent" />
+        <span>Recenter Route</span>
+      </button>
+    </div>
+  );
 }
 
 export function DashboardMap() {
@@ -155,17 +182,20 @@ export function DashboardMap() {
     <div className="relative w-full h-[520px] lg:h-full min-h-[500px] rounded-2xl overflow-hidden border border-borderSubtle bg-card shadow-2xl">
       <MapContainer
         center={center}
-        zoom={9}
-        scrollWheelZoom={true}
+        zoom={10}
+        minZoom={7}
+        maxZoom={18}
+        scrollWheelZoom={false}
         className="w-full h-full z-10"
       >
         <TileLayer
-          attribution='&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-          url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           maxZoom={19}
         />
 
         <MapBoundsController coordinates={coordinates} />
+        <RecenterControl coordinates={coordinates} />
 
         {/* 200m Highway Corridor Buffer Swath */}
         {coordinates.length > 1 && (

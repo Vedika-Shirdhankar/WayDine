@@ -18,7 +18,8 @@ let defaultRepositoryInstance = null;
  */
 export function getRepository(options = {}) {
   if (options.forceLocal) {
-    return new LocalSeedRepository();
+    defaultRepositoryInstance = new LocalSeedRepository();
+    return defaultRepositoryInstance;
   }
 
   if (!defaultRepositoryInstance) {
