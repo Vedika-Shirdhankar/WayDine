@@ -160,33 +160,49 @@ export function JourneyProvider({ children }) {
     : 0;
 
   // Run the core engine with current route & filters
-  const runEngine = useCallback(async (currentRoute, vehicleMeters = vehicleDistanceMeters, currentFilters = filters) => {
-    if (!currentRoute?.coordinates || currentRoute.coordinates.length < 2) return;
+  const runEngine = useCallback(async (routeOverride = null, customDist = null, customFilters = null, customWeights = null) => {
+    const currentRoute = routeOverride || route;
+    const coords = currentRoute?.coordinates || currentRoute?.geometry;
+    if (!coords || coords.length < 2) return;
 
     setIsEngineCalculating(true);
     try {
+      const activeRoute = {
+        ...currentRoute,
+        coordinates: coords,
+        totalDistanceMeters: currentRoute.totalDistanceMeters || currentRoute.distanceMeters || computePolylineDistanceMeters(coords)
+      };
+
+      const effectiveDist = (customDist !== null && customDist !== undefined) ? customDist : vehicleDistanceMeters;
+      const effectiveFilters = customFilters || filters;
+
       const repo = getRepository();
       const restaurants = await repo.getRestaurants({
-        dietaryOption: currentFilters.dietaryPreference,
-        priceRange: currentFilters.budget !== 'Any' ? currentFilters.budget : undefined
+        dietaryOption: effectiveFilters.dietaryPreference,
+        priceRange: effectiveFilters.budget !== 'Any' ? effectiveFilters.budget : undefined
       });
       const roadGraph = await repo.getRoadGraph();
       const demoParams = await repo.getDemoParameters();
 
       // Estimate vehicle node
       const vehicleNodeId = demoParams?.vehicleNodeId || 'NODE_KALAMBOLI';
-      const highwayDurationToVehicleSeconds = Math.round(vehicleMeters / 25); // ~90 km/h
+      const highwayDurationToVehicleSeconds = Math.round(effectiveDist / 25); // ~90 km/h
+
+      // Compute actual vehicle position for this route & distance
+      const vehiclePos = interpolatePositionAlongRoute(coords, effectiveDist).position;
 
       // Read custom weights or engine config from localStorage if configured
-      let customWeights = undefined;
-      try {
-        const rawW = localStorage.getItem('waydine_weights');
-        if (rawW) {
-          const parsed = JSON.parse(rawW);
-          const total = Object.values(parsed).reduce((a, b) => a + b, 0);
-          if (total === 100) customWeights = parsed;
-        }
-      } catch {}
+      let parsedWeights = customWeights;
+      if (!parsedWeights) {
+        try {
+          const rawW = localStorage.getItem('waydine_weights');
+          if (rawW) {
+            const parsed = JSON.parse(rawW);
+            const total = Object.values(parsed).reduce((a, b) => a + b, 0);
+            if (total === 100) parsedWeights = parsed;
+          }
+        } catch {}
+      }
 
       let customEngineConfig = {};
       try {
@@ -194,12 +210,12 @@ export function JourneyProvider({ children }) {
         if (rawC) customEngineConfig = JSON.parse(rawC);
       } catch {}
 
-      const corridorM = customEngineConfig.corridorMeters || 500;
-      const maxDetourM = currentFilters.maxDetourMeters || customEngineConfig.maxDetourMeters || 2500;
+      const corridorM = customEngineConfig.corridorMeters || effectiveFilters.corridorMeters || 1200;
+      const maxDetourM = effectiveFilters.maxDetourMeters || customEngineConfig.maxDetourMeters || 2500;
 
       const results = recommendPitstops({
-        routeCoordinates: currentRoute.coordinates,
-        vehiclePosition: vehicleState.position,
+        routeCoordinates: coords,
+        vehiclePosition: vehiclePos,
         restaurants,
         roadGraph,
         vehicleNodeId,
@@ -208,9 +224,9 @@ export function JourneyProvider({ children }) {
         filters: {
           corridorMeters: corridorM,
           maxDetourMeters: maxDetourM,
-          requiredCategory: currentFilters.preferredCategory !== 'All' ? currentFilters.preferredCategory : ''
+          requiredCategory: effectiveFilters.preferredCategory !== 'All' ? effectiveFilters.preferredCategory : ''
         },
-        ...(customWeights ? { weights: customWeights } : {})
+        ...(parsedWeights ? { weights: parsedWeights } : {})
       });
 
       // Normalize engine output to UI-friendly shapes
@@ -218,20 +234,20 @@ export function JourneyProvider({ children }) {
       setEngineResults(normalized);
 
       // Persist computed recommendations to Supabase / Local repository
-      if (currentRoute?.id && results.eligible.length > 0) {
-        getRepository().saveRecommendations(currentRoute.id, results.eligible).catch(() => {});
+      if (activeRoute?.id && results.eligible.length > 0) {
+        getRepository().saveRecommendations(activeRoute.id, results.eligible).catch(() => {});
       }
 
-      // Auto-select top recommendation if none selected
+      // Auto-select top recommendation if none selected or if previous selection not in new list
       if (results.eligible.length > 0) {
         if (!selectedRestaurantId || !results.eligible.some(r => r.restaurant.id === selectedRestaurantId)) {
           setSelectedRestaurantId(results.eligible[0].restaurant.id);
         }
+      } else {
+        setSelectedRestaurantId(null);
       }
 
-      if (results.relaxationInfo?.wasRelaxed) {
-        addToast(`Constraint relaxed: ${results.relaxationInfo.relaxedConstraint} (broadened criteria to surface options)`, 'warning');
-      }
+      // relaxationInfo is safely preserved in engineResults for UI display without spamming toast loops
     } catch (err) {
       console.error('[JourneyContext] Engine error:', err);
       setError(err.message);
@@ -239,7 +255,7 @@ export function JourneyProvider({ children }) {
     } finally {
       setIsEngineCalculating(false);
     }
-  }, [vehicleDistanceMeters, filters, vehicleState.position, departureTime, selectedRestaurantId, addToast]);
+  }, [route, vehicleDistanceMeters, filters, departureTime, selectedRestaurantId, addToast]);
 
   // "Load Demo Journey" button action - instantly loads demo route & runs engine
   const loadDemoJourney = useCallback(async () => {
@@ -277,18 +293,28 @@ export function JourneyProvider({ children }) {
       // Calculate route via routingService
       const calculatedRoute = await calculateRouteService(startPoint.location, destinationPoint.location);
       setRoute(calculatedRoute);
+      setVehicleDistanceMeters(0);
       getRepository().saveRoute(calculatedRoute).catch(() => {});
       setDataSourceTag(calculatedRoute.dataSource === 'live-osrm' ? 'Live (OSRM)' : 'Demo fallback');
 
       addToast(`Route calculated (${(calculatedRoute.distanceMeters / 1000).toFixed(1)} km) via ${calculatedRoute.dataSource}`, 'success');
-      await runEngine(calculatedRoute, vehicleDistanceMeters, filters);
+      await runEngine(calculatedRoute, 0, filters);
     } catch (err) {
       console.warn('[findBestPitstops] Route service failed, using fallback route:', err.message);
-      await loadDemoJourney();
+      try {
+        const fallbackRoute = await calculateRouteService(startPoint.location, destinationPoint.location, { forceOffline: true });
+        setRoute(fallbackRoute);
+        setVehicleDistanceMeters(0);
+        setDataSourceTag('Demo fallback');
+        addToast(`Route calculated (${(fallbackRoute.distanceMeters / 1000).toFixed(1)} km) via estimated highway path`, 'warning');
+        await runEngine(fallbackRoute, 0, filters);
+      } catch (fallbackErr) {
+        addToast('Unable to calculate route for the selected locations.', 'danger');
+      }
     } finally {
       setIsLoading(false);
     }
-  }, [startPoint, destinationPoint, vehicleDistanceMeters, filters, runEngine, loadDemoJourney, addToast]);
+  }, [startPoint, destinationPoint, filters, runEngine, addToast]);
 
   // Initialize demo journey on first mount
   useEffect(() => {

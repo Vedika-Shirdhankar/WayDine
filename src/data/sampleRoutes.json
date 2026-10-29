@@ -1,60 +1,84 @@
 [
   {
-    "id": "route-sf-monterey",
-    "name": "Silicon Valley to Monterey (US-101 S Corridor)",
-    "description": "High-traffic tech corridor along US-101 South through Palo Alto, San Jose, and Gilroy to Monterey.",
-    "startPoint": { "name": "San Francisco / SFO Area", "location": [37.6213, -122.379] },
-    "endPoint": { "name": "Monterey Bay Coast", "location": [36.6002, -121.8947] },
-    "totalDistanceMeters": 182400,
-    "totalDurationSeconds": 7320,
-    "source": "Sample/Demo",
-    "coordinates": [
-      [37.6213, -122.379],
-      [37.563, -122.3255],
-      [37.5338, -122.289],
-      [37.4852, -122.2364],
-      [37.4419, -122.143],
-      [37.4138, -122.08]
-    ]
-  },
-  {
-    "id": "route-i95-boston",
-    "name": "New York to New Haven (I-95 North Corridor)",
-    "description": "Coastal Interstate 95 route passing Stamford, Norwalk, Bridgeport, and New Haven.",
-    "startPoint": { "name": "New York City (Bronx)", "location": [40.8501, -73.8662] },
-    "endPoint": { "name": "New Haven, CT", "location": [41.3083, -72.9279] },
-    "totalDistanceMeters": 118000,
-    "totalDurationSeconds": 5100,
-    "source": "Sample/Demo",
-    "coordinates": [
-      [40.8501, -73.8662],
-      [40.925, -73.784],
-      [40.978, -73.708],
-      [41.0534, -73.5387],
-      [41.1177, -73.4078],
-      [41.1792, -73.1894],
-      [41.222, -73.064],
-      [41.3083, -72.9279]
-    ]
-  },
-  {
     "id": "route-mumbai-pune",
     "name": "Mumbai-Pune Expressway (NH-48)",
-    "description": "India's landmark 6-lane access-controlled expressway through the Western Ghats.",
-    "startPoint": { "name": "Navi Mumbai (Kalamboli)", "location": [19.0144, 73.1025] },
-    "endPoint": { "name": "Pune (Kiwale Interchange)", "location": [18.6652, 73.7382] },
-    "totalDistanceMeters": 94500,
-    "totalDurationSeconds": 4380,
+    "description": "India's landmark 6-lane access-controlled expressway through the Western Ghats (148.5 km).",
+    "startPoint": { "name": "Mumbai (Eastern Express / Kalamboli)", "location": [19.0144, 73.1025] },
+    "endPoint": { "name": "Pune (Kiwale / Wakad)", "location": [18.5204, 73.8567] },
+    "totalDistanceMeters": 148500,
+    "totalDurationSeconds": 6480,
     "source": "Sample/Demo",
     "coordinates": [
+      [19.0760, 72.8777],
       [19.0144, 73.1025],
       [18.9602, 73.1843],
-      [18.892, 73.284],
+      [18.8920, 73.2840],
+      [18.8350, 73.3080],
       [18.7905, 73.3712],
       [18.7525, 73.4086],
       [18.7214, 73.4892],
-      [18.694, 73.582],
-      [18.6652, 73.7382]
+      [18.6940, 73.5820],
+      [18.6850, 73.7200],
+      [18.5204, 73.8567]
+    ]
+  },
+  {
+    "id": "route-pune-mumbai",
+    "name": "Pune to Mumbai Expressway (Return Corridor)",
+    "description": "Return corridor from Pune Wakad/Hinjawadi back to Mumbai via Lonavala ghat descent.",
+    "startPoint": { "name": "Pune (Wakad / Hinjawadi)", "location": [18.5204, 73.8567] },
+    "endPoint": { "name": "Mumbai (Dadar / CST)", "location": [19.0178, 72.8478] },
+    "totalDistanceMeters": 148500,
+    "totalDurationSeconds": 6600,
+    "source": "Sample/Demo",
+    "coordinates": [
+      [18.5204, 73.8567],
+      [18.6850, 73.7200],
+      [18.6940, 73.5820],
+      [18.7214, 73.4892],
+      [18.7525, 73.4086],
+      [18.7905, 73.3712],
+      [18.8350, 73.3080],
+      [18.8920, 73.2840],
+      [18.9602, 73.1843],
+      [19.0144, 73.1025],
+      [19.0760, 72.8777]
+    ]
+  },
+  {
+    "id": "route-mumbai-lonavala",
+    "name": "Mumbai to Lonavala Hill Station",
+    "description": "Weekend hill getaway route ascending the Khandala Ghats to Lonavala (95 km).",
+    "startPoint": { "name": "Mumbai (Eastern Express)", "location": [19.0760, 72.8777] },
+    "endPoint": { "name": "Lonavala Hill Station", "location": [18.7525, 73.4086] },
+    "totalDistanceMeters": 95000,
+    "totalDurationSeconds": 4200,
+    "source": "Sample/Demo",
+    "coordinates": [
+      [19.0760, 72.8777],
+      [19.0144, 73.1025],
+      [18.9602, 73.1843],
+      [18.8920, 73.2840],
+      [18.8350, 73.3080],
+      [18.7905, 73.3712],
+      [18.7525, 73.4086]
+    ]
+  },
+  {
+    "id": "route-lonavala-pune",
+    "name": "Lonavala to Pune Express Run",
+    "description": "Fast scenic descent through Talegaon and Dehu Road into Pune IT corridor (53 km).",
+    "startPoint": { "name": "Lonavala Hill Station", "location": [18.7525, 73.4086] },
+    "endPoint": { "name": "Pune (Hinjawadi / Wakad)", "location": [18.5204, 73.8567] },
+    "totalDistanceMeters": 53500,
+    "totalDurationSeconds": 2280,
+    "source": "Sample/Demo",
+    "coordinates": [
+      [18.7525, 73.4086],
+      [18.7214, 73.4892],
+      [18.6940, 73.5820],
+      [18.6850, 73.7200],
+      [18.5204, 73.8567]
     ]
   }
 ]

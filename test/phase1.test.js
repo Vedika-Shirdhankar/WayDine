@@ -530,4 +530,33 @@ describe('8. recommendationEngine.js: Hard Constraints, Scoring & Relaxation', (
     expect(result.relaxationInfo.relaxedConstraint).toBe(REASON_CODES.CATEGORY_UNAVAILABLE);
     expect(result.eligible.length).toBe(1);
   });
+
+  it('updates recommendations dynamically when selecting different route sub-corridors (e.g. Mumbai -> Navi Mumbai vs Mumbai -> Pune)', async () => {
+    const seed = await import('../src/data/mumbaiPuneSeed.json');
+    const { calculateRouteService } = await import('../src/services/routingService.js');
+    
+    // Mumbai (Dadar) to Navi Mumbai (Vashi)
+    const shortRoute = await calculateRouteService([19.0178, 72.8478], [19.0657, 72.9984]);
+    expect(shortRoute.coordinates.length).toBeGreaterThan(1);
+    expect(shortRoute.totalDistanceMeters).toBeGreaterThan(15000);
+    expect(shortRoute.totalDistanceMeters).toBeLessThan(35000);
+
+    const recsShort = recommendPitstops({
+      routeCoordinates: shortRoute.coordinates,
+      vehiclePosition: shortRoute.coordinates[0],
+      restaurants: seed.default.restaurants,
+      departureTime: new Date('2026-10-29T12:00:00'),
+      highwayDurationToVehicleSeconds: 0,
+      filters: { corridorMeters: 1200, maxDetourMeters: 2500 }
+    });
+
+    expect(recsShort.eligible.length).toBeGreaterThan(0);
+    // None of the short route recommendations should be Lonavala or Pune
+    const hasFarRestaurants = recsShort.eligible.some(r => 
+      r.restaurant.name.toLowerCase().includes('lonavala') ||
+      r.restaurant.name.toLowerCase().includes('pune') ||
+      r.restaurant.name.toLowerCase().includes('talegaon')
+    );
+    expect(hasFarRestaurants).toBe(false);
+  });
 });

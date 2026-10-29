@@ -9,7 +9,7 @@ import { IWayDineRepository } from './repositoryInterface.js';
 import { LocalSeedRepository } from './LocalSeedRepository.js';
 import { RoadNetworkGraph } from '../engine/shortestPath.js';
 import { getSupabaseClient, isSupabaseConfigured, getEnvVar } from '../services/supabaseClient.js';
-import { showToast } from '../components/Toast.jsx';
+import { showToast } from '../services/toastBus.js';
 
 export class SupabaseRepository extends IWayDineRepository {
   /**
@@ -46,13 +46,19 @@ export class SupabaseRepository extends IWayDineRepository {
    * @private
    */
   _handleMidSessionFailure(err, actionContext) {
-    console.warn(`[SupabaseRepository] ${actionContext} failed, falling back to local seed:`, err.message || err);
-    // Don't treat RLS policy rejections on guest actions as network offline
-    const isRls = err.code === '42501' || (err.message && err.message.includes('row-level security'));
-    if (!isRls) {
-      this.isReachable = false;
-      showToast(`Supabase connection error during ${actionContext}. Using local fallback.`, 'warning');
+    const isRls = err?.code === '42501' ||
+                  (err?.message && (err.message.includes('row-level security') || err.message.includes('violates'))) ||
+                  err?.status === 401 ||
+                  err?.status === 403;
+
+    if (isRls) {
+      // Unauthenticated guest action restricted by cloud RLS policy - silent fallback to local cache
+      return;
     }
+
+    console.warn(`[SupabaseRepository] ${actionContext} failed, falling back to local seed:`, err?.message || err);
+    this.isReachable = false;
+    showToast(`Supabase connection error during ${actionContext}. Using local fallback.`, 'warning');
   }
 
   /**
@@ -132,6 +138,17 @@ export class SupabaseRepository extends IWayDineRepository {
           } : undefined
         };
       });
+
+      // Merge with local repository to guarantee complete coverage across all sub-corridors (e.g. Mumbai -> Navi Mumbai)
+      try {
+        const localList = await this.fallback.getRestaurants(filter);
+        const remoteIds = new Set(list.map(r => r.id));
+        for (const loc of localList) {
+          if (!remoteIds.has(loc.id)) {
+            list.push(loc);
+          }
+        }
+      } catch {}
 
       if (filter.cuisine && filter.cuisine !== 'All') {
         const q = filter.cuisine.toLowerCase();
@@ -278,7 +295,10 @@ export class SupabaseRepository extends IWayDineRepository {
 
       return { success: true, id: routeId };
     } catch (err) {
-      this._handleMidSessionFailure(err, 'saveRoute');
+      const isRls = err?.code === '42501' || (err?.message && (err.message.includes('row-level security') || err.message.includes('violates'))) || err?.status === 401;
+      if (!isRls) {
+        this._handleMidSessionFailure(err, 'saveRoute');
+      }
       return this.fallback.saveRoute(route);
     }
   }
@@ -315,7 +335,10 @@ export class SupabaseRepository extends IWayDineRepository {
 
       return { success: true, count: rows.length };
     } catch (err) {
-      this._handleMidSessionFailure(err, 'saveRecommendations');
+      const isRls = err?.code === '42501' || (err?.message && (err.message.includes('row-level security') || err.message.includes('violates'))) || err?.status === 401;
+      if (!isRls) {
+        this._handleMidSessionFailure(err, 'saveRecommendations');
+      }
       return this.fallback.saveRecommendations(routeId, recommendations);
     }
   }
@@ -357,7 +380,10 @@ export class SupabaseRepository extends IWayDineRepository {
 
       return { success: true, id: data?.id || `hist-${Date.now()}` };
     } catch (err) {
-      this._handleMidSessionFailure(err, 'saveHistory');
+      const isRls = err?.code === '42501' || (err?.message && (err.message.includes('row-level security') || err.message.includes('violates'))) || err?.status === 401;
+      if (!isRls) {
+        this._handleMidSessionFailure(err, 'saveHistory');
+      }
       return this.fallback.saveHistory(entry);
     }
   }

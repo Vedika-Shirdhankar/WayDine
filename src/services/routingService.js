@@ -18,8 +18,11 @@ import { getRepository, getRoutes, getRouteById } from '../data/restaurantReposi
  * @param {boolean} [options.forceOffline=false]
  * @returns {Promise<{
  *   geometry: Array<[number, number]>,
+ *   coordinates: Array<[number, number]>,
  *   distanceMeters: number,
+ *   totalDistanceMeters: number,
  *   durationSeconds: number,
+ *   totalDurationSeconds: number,
  *   segments: Array<any>,
  *   source: string,
  *   dataSource: 'live-osrm' | 'demo-fallback'
@@ -28,8 +31,19 @@ import { getRepository, getRoutes, getRouteById } from '../data/restaurantReposi
 export async function calculateRouteService(src, dst, options = {}) {
   const result = await getRoute(src, dst, options);
   const dataSource = result.source === 'Live (OSRM/OSM)' ? 'live-osrm' : 'demo-fallback';
+  const coords = result.geometry || result.coordinates;
+  const dist = result.distanceMeters ?? result.totalDistanceMeters;
+  const dur = result.durationSeconds ?? result.totalDurationSeconds;
+
   return {
     ...result,
+    id: result.id || `route-${Date.now()}`,
+    geometry: coords,
+    coordinates: coords,
+    distanceMeters: dist,
+    totalDistanceMeters: dist,
+    durationSeconds: dur,
+    totalDurationSeconds: dur,
     dataSource
   };
 }
@@ -64,8 +78,11 @@ export async function loadRoute(routeId, forceOffline = false) {
     );
     return {
       ...preset,
+      geometry: live.geometry,
       coordinates: live.geometry,
+      distanceMeters: live.distanceMeters,
       totalDistanceMeters: live.distanceMeters,
+      durationSeconds: live.durationSeconds,
       totalDurationSeconds: live.durationSeconds,
       source: 'Live (OSRM/OSM)',
       dataSource: 'live-osrm'
@@ -91,10 +108,7 @@ export async function calculateCustomRoute(startCoord, endCoord, name = 'Custom 
   return {
     ...route,
     id: `custom-${Date.now()}`,
-    name,
-    coordinates: route.geometry,
-    totalDistanceMeters: route.distanceMeters,
-    totalDurationSeconds: route.durationSeconds
+    name
   };
 }
 

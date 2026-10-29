@@ -14,12 +14,20 @@ import {
 import { useJourneyEngine } from '../../context/JourneyContext.jsx';
 
 const PRESET_PLACES = [
-  { name: 'Mumbai (Eastern Express)', location: [19.0760, 72.8777] },
-  { name: 'Kalamboli Interchange (KM 25)', location: [19.0144, 73.1025] },
-  { name: 'Khalapur Toll Plaza (KM 60)', location: [18.8412, 73.2845] },
-  { name: 'Lonavala Ghat Overpass (KM 95)', location: [18.7525, 73.4086] },
-  { name: 'Talegaon Toll Plaza (KM 125)', location: [18.7235, 73.6621] },
-  { name: 'Pune (Kiwale / Wakad)', location: [18.5204, 73.8567] }
+  { name: 'Mumbai (Eastern Express / Dadar)', location: [19.0178, 72.8478] },
+  { name: 'Mumbai (CST / Marine Drive)', location: [18.9400, 72.8350] },
+  { name: 'Navi Mumbai (Vashi Toll Plaza)', location: [19.0657, 72.9984] },
+  { name: 'Kalamboli Interchange (KM 0 - Expressway Start)', location: [19.0144, 73.1025] },
+  { name: 'Panvel Bypass Junction (KM 18)', location: [18.9894, 73.1175] },
+  { name: 'Khopoli / Imagica Theme Park (KM 55)', location: [18.7900, 73.3400] },
+  { name: 'Khalapur Toll & Food Mall (KM 60)', location: [18.8350, 73.3080] },
+  { name: 'Khandala Ghats Scenic Overlook (KM 88)', location: [18.7610, 73.3750] },
+  { name: 'Lonavala Hill Station (KM 95)', location: [18.7525, 73.4086] },
+  { name: 'Kamshet Paragliding Valley (KM 110)', location: [18.7420, 73.5580] },
+  { name: 'Talegaon Dabhade Toll (KM 125)', location: [18.7235, 73.6621] },
+  { name: 'Somatne Phata Interchange (KM 135)', location: [18.6850, 73.7200] },
+  { name: 'Hinjawadi IT Park, Pune (KM 142)', location: [18.5913, 73.7389] },
+  { name: 'Pune (Kiwale / Wakad - KM 148.5)', location: [18.5204, 73.8567] }
 ];
 
 export function JourneyPlanner() {

@@ -1,0 +1,140 @@
+-- =====================================================================
+-- WayDine: Complete Highway Restaurants & Food Availability Windows
+-- Expands dataset to 36 authentic restaurants along Mumbai -> Navi Mumbai -> Pune Highway (NH-48)
+-- Run this in Supabase SQL Editor: https://supabase.com/dashboard/project/glcjizewtbnauoatdpsd/sql
+-- =====================================================================
+
+INSERT INTO public.restaurants (
+  id, name, latitude, longitude, address, rating, review_count,
+  price_range, cuisine_type, categories, dietary_options,
+  has_drive_thru, average_dine_minutes, opening_time, closing_time, data_source
+) VALUES
+  ('rest_13_panvel_shreedatta', 'Shree Datta Snacks & Misal', 18.995000, 73.115000, 'NH-48 Palaspe Phata, Panvel Bypass', 4.6, 3850, '$', 'Street Food', ARRAY['Breakfast', 'Quick Bites', 'Tea'], ARRAY['Vegetarian', 'Vegan'], false, 15, '06:00', '22:00', 'sample-demo'),
+  ('rest_14_kalamboli_punjabi', 'Pawan Highway Dhaba', 19.008000, 73.109000, 'Old Mumbai-Pune Highway, Kalamboli Junction', 4.3, 1920, '$$', 'North Indian', ARRAY['Lunch', 'Dinner', 'North Indian'], ARRAY['Vegetarian', 'Halal'], false, 35, '11:00', '02:00', 'sample-demo'),
+  ('rest_15_khalapur_starbucks', 'Starbucks Express Drive-Thru', 18.836500, 73.308800, 'Khalapur Food Plaza, Mumbai-Pune Expressway', 4.7, 2800, '$$$', 'Coffee & Beverages', ARRAY['Coffee', 'Breakfast', 'Quick Bites', 'Desserts'], ARRAY['Vegetarian', 'Vegan', 'Gluten-Free'], true, 15, '07:00', '23:59', 'sample-demo'),
+  ('rest_16_khalapur_mcdonalds', 'McDonald''s Highway Drive-Thru', 18.837200, 73.309200, 'Expressway Midway Hub, Khalapur', 4.4, 4150, '$', 'Fast Food', ARRAY['Burgers', 'Fast Food', 'Breakfast', 'Quick Bites'], ARRAY['Vegetarian', 'Halal'], true, 15, '06:00', '23:59', 'sample-demo'),
+  ('rest_17_sarovar_pure_veg', 'Hotel Sarovar Pure Veg Heritage', 18.835800, 73.308200, 'NH-48 Express Arcade, Khalapur', 4.5, 1670, '$$', 'South Indian', ARRAY['Breakfast', 'Lunch', 'South Indian', 'Quick Bites'], ARRAY['Vegetarian', 'Jain', 'Vegan'], false, 25, '06:30', '22:30', 'sample-demo'),
+  ('rest_18_imagica_novotel', 'The Square - Novotel Imagica', 18.791000, 73.342000, 'Khopoli-Pali Road, near Imagicaa Theme Park', 4.8, 1240, '$$$$', 'Continental', ARRAY['Lunch', 'Dinner', 'Continental', 'Desserts'], ARRAY['Vegetarian', 'Jain', 'Gluten-Free', 'Halal'], false, 45, '07:00', '23:00', 'sample-demo'),
+  ('rest_19_maganlal_lonavala', 'Maganlal Chikki & Highway Sweets', 18.752000, 73.407500, 'Old Mumbai-Pune Road, Khandala Pass', 4.6, 5100, '$', 'Desserts', ARRAY['Desserts', 'Quick Bites', 'Tea'], ARRAY['Vegetarian', 'Jain'], false, 10, '08:00', '22:00', 'sample-demo'),
+  ('rest_20_kinara_village', 'The Kinara Village Dhaba', 18.749000, 73.415000, 'Varsoli, Old Mumbai-Pune Highway, Lonavala', 4.7, 6300, '$$$', 'North Indian', ARRAY['Lunch', 'Dinner', 'North Indian'], ARRAY['Vegetarian', 'Halal'], false, 40, '11:30', '23:30', 'sample-demo'),
+  ('rest_21_ramakrishna_lonavala', 'Rama Krishna Pure Veg Lonavala', 18.751500, 73.408500, 'Mumbai-Pune Road, Opp. ST Stand, Lonavala', 4.5, 4800, '$$', 'South Indian', ARRAY['Breakfast', 'Lunch', 'Dinner', 'South Indian'], ARRAY['Vegetarian', 'Jain'], false, 30, '07:30', '23:00', 'sample-demo'),
+  ('rest_22_sheetal_da_dhaba', 'Sheetal Da Dhaba Lonavala', 18.746000, 73.422000, 'Karla Phata, Mumbai-Pune Highway', 4.4, 3900, '$$$', 'Seafood', ARRAY['Lunch', 'Dinner', 'Seafood', 'North Indian'], ARRAY['Vegetarian', 'Halal'], false, 40, '11:00', '01:00', 'sample-demo'),
+  ('rest_23_kamshet_ccd', 'Café Coffee Day Lounge Kamshet', 18.739000, 73.555000, 'Paragliding Valley Viewpoint, NH-48', 4.2, 1150, '$$', 'Coffee & Beverages', ARRAY['Coffee', 'Breakfast', 'Quick Bites'], ARRAY['Vegetarian'], false, 20, '08:00', '22:00', 'sample-demo'),
+  ('rest_24_kamats_talegaon', 'Kamat''s Udupi Highway Express', 18.721200, 73.652500, 'Expressway Toll Compound, Talegaon', 4.5, 3100, '$', 'South Indian', ARRAY['Breakfast', 'Lunch', 'Quick Bites', 'South Indian'], ARRAY['Vegetarian', 'Jain', 'Vegan'], false, 20, '06:00', '22:30', 'sample-demo'),
+  ('rest_25_subway_talegaon', 'Subway Highway Fresh', 18.722000, 73.653000, 'Talegaon Rest Hub, NH-48', 4.3, 1400, '$$', 'Fast Food', ARRAY['Fast Food', 'Quick Bites', 'Breakfast'], ARRAY['Vegetarian', 'Vegan', 'Halal'], true, 15, '07:00', '23:00', 'sample-demo'),
+  ('rest_26_bhajansingh_somatne', 'Bhajan Singh Da Dhaba', 18.684000, 73.719000, 'Old Mumbai-Pune Highway, Somatne Phata', 4.6, 4500, '$$', 'North Indian', ARRAY['Lunch', 'Dinner', 'North Indian'], ARRAY['Vegetarian'], false, 35, '11:00', '01:30', 'sample-demo'),
+  ('rest_27_surveen_grill', 'Surveen Highway Continental & Pizza', 18.685200, 73.721500, 'Dehu Road Bypass, near Somatne', 4.7, 1850, '$$$', 'Continental', ARRAY['Pizza', 'Dinner', 'Lunch', 'Continental'], ARRAY['Vegetarian', 'Jain', 'Gluten-Free'], false, 30, '12:00', '23:30', 'sample-demo'),
+  ('rest_28_sayaji_wakad', 'Portico - Sayaji Hotel Pune', 18.598500, 73.759000, 'Mumbai-Bangalore Highway, Wakad, Pune', 4.8, 5200, '$$$$', 'Multi-Cuisine Court', ARRAY['Lunch', 'Dinner', 'Desserts', 'Continental'], ARRAY['Vegetarian', 'Halal', 'Jain', 'Gluten-Free'], false, 45, '07:00', '23:59', 'sample-demo'),
+  ('rest_29_gurukripa_sion', 'Guru Kripa Sion Circle', 19.034000, 72.861500, '40, Guru Kripa Bldg, Sion West, Eastern Express Link', 4.6, 4200, '$', 'Fast Food & Chaat', ARRAY['Quick Bites', 'Breakfast', 'Snacks', 'Lunch'], ARRAY['Vegetarian', 'Jain'], false, 20, '07:30', '23:00', 'sample-demo'),
+  ('rest_30_amar_chembur', 'Amar Fast Food & Restaurant Chembur', 19.053500, 72.883000, 'Sion Trombay Road, Near Eastern Freeway Exit, Chembur', 4.5, 3800, '$$', 'Fast Food & Pav Bhaji', ARRAY['Dinner', 'Fast Food', 'Quick Bites', 'Snacks'], ARRAY['Vegetarian', 'Jain'], false, 25, '10:30', '01:30', 'sample-demo'),
+  ('rest_31_kamats_mankhurd', 'Kamat''s Highway Express Mankhurd', 19.045500, 72.917500, 'Sion-Panvel Highway, Near Mankhurd Flyover', 4.4, 2100, '$$', 'Pure Veg & South Indian', ARRAY['Breakfast', 'Lunch', 'Coffee', 'Quick Bites'], ARRAY['Vegetarian', 'Jain'], false, 20, '06:30', '23:00', 'sample-demo'),
+  ('rest_32_navratna_vashi', 'Navratna Pure Veg - Vashi Plaza', 19.065200, 72.997200, 'Vashi Plaza, Sector 17, Opp Toll Concourse, Vashi', 4.5, 4900, '$$', 'Pure Veg & South Indian', ARRAY['Breakfast', 'Lunch', 'Dinner', 'Coffee', 'Quick Bites'], ARRAY['Vegetarian', 'Jain'], false, 30, '07:00', '23:30', 'sample-demo'),
+  ('rest_33_mahesh_vashi', 'Mahesh Lunch Home Coastal Dining Vashi', 19.064500, 72.998000, 'Palm Beach Galleria, Sector 19D, Vashi, Navi Mumbai', 4.7, 3200, '$$$', 'Coastal Seafood & Mangalorean', ARRAY['Lunch', 'Dinner', 'Seafood'], ARRAY['Halal'], false, 45, '11:30', '23:45', 'sample-demo'),
+  ('rest_34_starbucks_vashi', 'Starbucks & Subway Express Vashi Gateway', 19.065000, 72.996000, 'Highway Concourse, Sector 30A, Near Vashi Railway Node', 4.6, 2600, '$$$', 'Café & Sandwiches', ARRAY['Coffee', 'Breakfast', 'Quick Bites', 'Beverages'], ARRAY['Vegetarian'], true, 15, '07:00', '23:59', 'sample-demo'),
+  ('rest_35_shabari_belapur', 'Hotel Shabari Pure Veg Belapur', 19.022000, 73.041000, 'CBD Belapur Highway Node, Sector 11, Navi Mumbai', 4.3, 1850, '$$', 'Pure Veg & Thali', ARRAY['Lunch', 'Dinner', 'Thali'], ARRAY['Vegetarian', 'Jain'], false, 35, '11:00', '23:00', 'sample-demo'),
+  ('rest_36_barbeque_nation_vashi', 'Barbeque Nation Vashi Gateway', 19.063000, 72.998800, 'Inorbit Highway Mall, Sector 30A, Vashi, Navi Mumbai', 4.5, 3400, '$$$', 'Barbeque & Multi-Cuisine', ARRAY['Lunch', 'Dinner', 'Desserts'], ARRAY['Vegetarian', 'Halal'], false, 60, '12:00', '23:00', 'sample-demo')
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  latitude = EXCLUDED.latitude,
+  longitude = EXCLUDED.longitude,
+  address = EXCLUDED.address,
+  rating = EXCLUDED.rating,
+  review_count = EXCLUDED.review_count,
+  price_range = EXCLUDED.price_range,
+  cuisine_type = EXCLUDED.cuisine_type,
+  categories = EXCLUDED.categories,
+  dietary_options = EXCLUDED.dietary_options,
+  has_drive_thru = EXCLUDED.has_drive_thru,
+  average_dine_minutes = EXCLUDED.average_dine_minutes,
+  opening_time = EXCLUDED.opening_time,
+  closing_time = EXCLUDED.closing_time,
+  data_source = EXCLUDED.data_source;
+
+-- Access points
+INSERT INTO public.restaurant_access_points (
+  id, restaurant_id, road_node_id, rejoin_node_id,
+  latitude, longitude, description, access_class
+) VALUES
+  ('ap_13', 'rest_13_panvel_shreedatta', 'NODE_KALAMBOLI', 'NODE_KALAMBOLI', 18.995000, 73.115000, 'Direct roadside service plaza near Panvel bypass', 'GREEN'),
+  ('ap_14', 'rest_14_kalamboli_punjabi', 'NODE_KALAMBOLI', 'NODE_KALAMBOLI', 19.008000, 73.109000, 'Expressway entry road adjacent access', 'GREEN'),
+  ('ap_15', 'rest_15_khalapur_starbucks', 'NODE_KHALAPUR_RAMP', 'NODE_KHALAPUR_ON', 18.836500, 73.308800, 'Direct drive-thru ramp at Khalapur Food Court', 'GREEN'),
+  ('ap_16', 'rest_16_khalapur_mcdonalds', 'NODE_KHALAPUR_RAMP', 'NODE_KHALAPUR_ON', 18.837200, 73.309200, 'Dedicated drive-thru deceleration lane at Khalapur Plaza', 'GREEN'),
+  ('ap_17', 'rest_17_sarovar_pure_veg', 'NODE_KHALAPUR_RAMP', 'NODE_KHALAPUR_ON', 18.835800, 73.308200, 'Food plaza parking concourse', 'GREEN'),
+  ('ap_18', 'rest_18_imagica_novotel', 'NODE_KHOPOLI_RAMP', 'NODE_KHOPOLI_ON', 18.791000, 73.342000, 'Khopoli interchange toll loop to resort concourse', 'AMBER'),
+  ('ap_19', 'rest_19_maganlal_lonavala', 'NODE_LONAVALA_RAMP', 'NODE_LONAVALA_ON', 18.752000, 73.407500, 'Khandala pass scenic pull-off', 'GREEN'),
+  ('ap_20', 'rest_20_kinara_village', 'NODE_LONAVALA_RAMP', 'NODE_LONAVALA_ON', 18.749000, 73.415000, 'Varsoli service road off Lonavala exit', 'GREEN'),
+  ('ap_21', 'rest_21_ramakrishna_lonavala', 'NODE_LONAVALA_RAMP', 'NODE_LONAVALA_ON', 18.751500, 73.408500, 'Lonavala town central connector', 'AMBER'),
+  ('ap_22', 'rest_22_sheetal_da_dhaba', 'NODE_LONAVALA_RAMP', 'NODE_LONAVALA_ON', 18.746000, 73.422000, 'Karla Caves Phata junction turn-off', 'AMBER'),
+  ('ap_23', 'rest_23_kamshet_ccd', 'NODE_KAMSHET_RAMP', 'NODE_KAMSHET_ON', 18.739000, 73.555000, 'Highway rest turnout overlooking valley', 'GREEN'),
+  ('ap_24', 'rest_24_kamats_talegaon', 'NODE_TALEGAON_RAMP', 'NODE_TALEGAON_ON', 18.721200, 73.652500, 'Talegaon Toll plaza rest facility', 'GREEN'),
+  ('ap_25', 'rest_25_subway_talegaon', 'NODE_TALEGAON_RAMP', 'NODE_TALEGAON_ON', 18.722000, 73.653000, 'Direct highway fuel & food station', 'GREEN'),
+  ('ap_26', 'rest_26_bhajansingh_somatne', 'NODE_SOMATNE_RAMP', 'NODE_SOMATNE_ON', 18.684000, 73.719000, 'Somatne Phata underpass service bay', 'GREEN'),
+  ('ap_27', 'rest_27_surveen_grill', 'NODE_SOMATNE_RAMP', 'NODE_SOMATNE_ON', 18.685200, 73.721500, 'Expressway exit link road', 'GREEN'),
+  ('ap_28', 'rest_28_sayaji_wakad', 'NODE_PUNE_END', 'NODE_PUNE_END', 18.598500, 73.759000, 'Wakad flyover arterial service road', 'GREEN'),
+  ('ap_29', 'rest_29_gurukripa_sion', 'NODE_MUMBAI_START', 'NODE_MUMBAI_START', 19.034000, 72.861500, 'Eastern Express highway Sion circle pull-off', 'GREEN'),
+  ('ap_30', 'rest_30_amar_chembur', 'NODE_MUMBAI_START', 'NODE_MUMBAI_START', 19.053500, 72.883000, 'Sion-Trombay highway junction service bay', 'GREEN'),
+  ('ap_31', 'rest_31_kamats_mankhurd', 'NODE_MUMBAI_START', 'NODE_MUMBAI_START', 19.045500, 72.917500, 'Sion-Panvel expressway Mankhurd link', 'GREEN'),
+  ('ap_32', 'rest_32_navratna_vashi', 'NODE_KALAMBOLI', 'NODE_KALAMBOLI', 19.065200, 72.997200, 'Vashi Toll bridge entry concourse', 'GREEN'),
+  ('ap_33', 'rest_33_mahesh_vashi', 'NODE_KALAMBOLI', 'NODE_KALAMBOLI', 19.064500, 72.998000, 'Palm Beach Galleria highway access road', 'GREEN'),
+  ('ap_34', 'rest_34_starbucks_vashi', 'NODE_KALAMBOLI', 'NODE_KALAMBOLI', 19.065000, 72.996000, 'Vashi Station highway node drop-off', 'GREEN'),
+  ('ap_35', 'rest_35_shabari_belapur', 'NODE_KALAMBOLI', 'NODE_KALAMBOLI', 19.022000, 73.041000, 'CBD Belapur arterial bypass access', 'GREEN'),
+  ('ap_36', 'rest_36_barbeque_nation_vashi', 'NODE_KALAMBOLI', 'NODE_KALAMBOLI', 19.063000, 72.998800, 'Inorbit Mall highway concourse', 'GREEN')
+ON CONFLICT (id) DO UPDATE SET
+  road_node_id = EXCLUDED.road_node_id,
+  rejoin_node_id = EXCLUDED.rejoin_node_id,
+  latitude = EXCLUDED.latitude,
+  longitude = EXCLUDED.longitude,
+  access_class = EXCLUDED.access_class;
+
+-- Food availability windows
+INSERT INTO public.restaurant_food_availability (
+  restaurant_id, window_name, start_hour, end_hour, available_categories
+) VALUES
+  ('rest_13_panvel_shreedatta', 'Morning Breakfast', 6, 12, ARRAY['Breakfast', 'Tea', 'Quick Bites']),
+  ('rest_13_panvel_shreedatta', 'All-Day Snacks', 12, 22, ARRAY['Quick Bites', 'Tea', 'Street Food']),
+  ('rest_14_kalamboli_punjabi', 'Lunch Feast', 11, 16, ARRAY['Lunch', 'North Indian']),
+  ('rest_14_kalamboli_punjabi', 'Late Dinner', 18, 2, ARRAY['Dinner', 'North Indian']),
+  ('rest_15_khalapur_starbucks', 'Morning Brew', 7, 12, ARRAY['Coffee', 'Breakfast', 'Quick Bites']),
+  ('rest_15_khalapur_starbucks', 'Evening Cafe', 12, 23, ARRAY['Coffee', 'Desserts', 'Quick Bites']),
+  ('rest_16_khalapur_mcdonalds', 'Breakfast McMuffins', 6, 11, ARRAY['Breakfast', 'Fast Food']),
+  ('rest_16_khalapur_mcdonalds', 'Lunch & Dinner Burgers', 11, 23, ARRAY['Burgers', 'Fast Food', 'Quick Bites']),
+  ('rest_17_sarovar_pure_veg', 'South Indian Breakfast', 6, 11, ARRAY['Breakfast', 'South Indian']),
+  ('rest_17_sarovar_pure_veg', 'Pure Veg Thali Lunch', 11, 16, ARRAY['Lunch', 'South Indian']),
+  ('rest_17_sarovar_pure_veg', 'Evening Thali Dinner', 18, 22, ARRAY['Dinner', 'South Indian']),
+  ('rest_18_imagica_novotel', 'Resort Buffet Lunch', 12, 16, ARRAY['Lunch', 'Continental']),
+  ('rest_18_imagica_novotel', 'Fine Dining Dinner', 19, 23, ARRAY['Dinner', 'Continental', 'Desserts']),
+  ('rest_19_maganlal_lonavala', 'Chikki & Sweets All Day', 8, 22, ARRAY['Desserts', 'Quick Bites', 'Tea']),
+  ('rest_20_kinara_village', 'Dhaba Lunch', 11, 16, ARRAY['Lunch', 'North Indian']),
+  ('rest_20_kinara_village', 'Village Dhaba Dinner', 18, 23, ARRAY['Dinner', 'North Indian']),
+  ('rest_21_ramakrishna_lonavala', 'Traditional Breakfast', 7, 11, ARRAY['Breakfast', 'South Indian']),
+  ('rest_21_ramakrishna_lonavala', 'Multi-Cuisine Lunch', 11, 16, ARRAY['Lunch', 'South Indian']),
+  ('rest_21_ramakrishna_lonavala', 'Family Dinner', 18, 23, ARRAY['Dinner', 'South Indian']),
+  ('rest_22_sheetal_da_dhaba', 'Seafood & Tandoor Lunch', 11, 16, ARRAY['Lunch', 'Seafood', 'North Indian']),
+  ('rest_22_sheetal_da_dhaba', 'Late Night Feast', 18, 1, ARRAY['Dinner', 'Seafood', 'North Indian']),
+  ('rest_23_kamshet_ccd', 'Scenic Coffee & Snacks', 8, 22, ARRAY['Coffee', 'Breakfast', 'Quick Bites']),
+  ('rest_24_kamats_talegaon', 'Udupi Morning Tiffin', 6, 11, ARRAY['Breakfast', 'South Indian']),
+  ('rest_24_kamats_talegaon', 'Express Lunch Thali', 11, 16, ARRAY['Lunch', 'South Indian', 'Quick Bites']),
+  ('rest_24_kamats_talegaon', 'Dinner Service', 18, 22, ARRAY['Dinner', 'South Indian']),
+  ('rest_25_subway_talegaon', 'Fresh Subs All Day', 7, 23, ARRAY['Fast Food', 'Quick Bites', 'Breakfast']),
+  ('rest_26_bhajansingh_somatne', 'Parathas & Lassi Lunch', 11, 16, ARRAY['Lunch', 'North Indian']),
+  ('rest_26_bhajansingh_somatne', 'Midnight Highway Dhaba', 18, 1, ARRAY['Dinner', 'North Indian']),
+  ('rest_27_surveen_grill', 'Wood-Fired Pizza & Grill', 12, 23, ARRAY['Pizza', 'Lunch', 'Dinner', 'Continental']),
+  ('rest_28_sayaji_wakad', 'Executive Grand Lunch', 12, 16, ARRAY['Lunch', 'Continental', 'Desserts']),
+  ('rest_28_sayaji_wakad', 'Luxury Dinner Feast', 19, 23, ARRAY['Dinner', 'Continental', 'Desserts']),
+  ('rest_29_gurukripa_sion', 'Morning Chaat & Samosas', 7, 12, ARRAY['Breakfast', 'Quick Bites', 'Snacks']),
+  ('rest_29_gurukripa_sion', 'Evening Samosa Chaat & Lassi', 12, 23, ARRAY['Quick Bites', 'Snacks', 'Lunch']),
+  ('rest_30_amar_chembur', 'All-Day Fast Food', 11, 18, ARRAY['Fast Food', 'Quick Bites', 'Snacks']),
+  ('rest_30_amar_chembur', 'Late Night Pav Bhaji', 18, 2, ARRAY['Dinner', 'Fast Food', 'Pav Bhaji']),
+  ('rest_31_kamats_mankhurd', 'Morning Idli & Dosa', 6, 11, ARRAY['Breakfast', 'Coffee', 'Quick Bites']),
+  ('rest_31_kamats_mankhurd', 'South Indian Thali Lunch', 11, 23, ARRAY['Lunch', 'Coffee', 'Quick Bites']),
+  ('rest_32_navratna_vashi', 'South Indian Breakfast & Filter Coffee', 7, 11, ARRAY['Breakfast', 'Coffee', 'Quick Bites']),
+  ('rest_32_navratna_vashi', 'Pure Veg Lunch & Dinner Service', 11, 23, ARRAY['Lunch', 'Dinner', 'Quick Bites']),
+  ('rest_33_mahesh_vashi', 'Coastal Seafood Lunch', 11, 16, ARRAY['Lunch', 'Seafood']),
+  ('rest_33_mahesh_vashi', 'Mangalorean Seafood Dinner', 19, 23, ARRAY['Dinner', 'Seafood']),
+  ('rest_34_starbucks_vashi', 'Morning Roastery', 7, 12, ARRAY['Coffee', 'Breakfast', 'Quick Bites']),
+  ('rest_34_starbucks_vashi', 'Evening Lounge & Sandwiches', 12, 23, ARRAY['Coffee', 'Quick Bites', 'Beverages']),
+  ('rest_35_shabari_belapur', 'Traditional Veg Thali Lunch', 11, 16, ARRAY['Lunch', 'Thali']),
+  ('rest_35_shabari_belapur', 'Dinner Thali Service', 18, 23, ARRAY['Dinner', 'Thali']),
+  ('rest_36_barbeque_nation_vashi', 'Live Grill Lunch Buffet', 12, 16, ARRAY['Lunch', 'Desserts']),
+  ('rest_36_barbeque_nation_vashi', 'Grand Evening Grill Feast', 19, 23, ARRAY['Dinner', 'Desserts'])
+ON CONFLICT DO NOTHING;

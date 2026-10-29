@@ -3,42 +3,26 @@ import { CheckCircle, AlertTriangle, Info, X } from 'lucide-react';
 
 const ToastContext = createContext(null);
 
-let globalToastDispatcher = null;
-
-/**
- * Registers a global callback for showing toasts outside React components.
- * @param {(message: string, type?: string, duration?: number) => void} fn
- */
-export function registerGlobalToast(fn) {
-  globalToastDispatcher = fn;
-  return () => {
-    if (globalToastDispatcher === fn) globalToastDispatcher = null;
-  };
-}
-
-/**
- * Emits a toast notification from anywhere in the application (even outside React tree).
- * @param {string} message
- * @param {'info' | 'success' | 'warning' | 'danger'} [type]
- * @param {number} [duration]
- */
-export function showToast(message, type = 'info', duration = 3500) {
-  if (typeof globalToastDispatcher === 'function') {
-    globalToastDispatcher(message, type, duration);
-  } else if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('waydine:toast', { detail: { message, type, duration } }));
-  }
-}
+import { showToast, registerGlobalToast } from '../services/toastBus.js';
+export { showToast, registerGlobalToast };
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
   const addToast = useCallback((message, type = 'info', duration = 3500) => {
-    const id = Date.now() + Math.random();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, duration);
+    setToasts(prev => {
+      // Prevent duplicate identical toasts from flooding the screen
+      if (prev.some(t => t.message === message)) {
+        return prev;
+      }
+      const id = Date.now() + Math.random();
+      setTimeout(() => {
+        setToasts(current => current.filter(t => t.id !== id));
+      }, duration);
+      // Keep maximum 3 toasts visible at once
+      const next = [...prev, { id, message, type }];
+      return next.slice(-3);
+    });
   }, []);
 
   const removeToast = useCallback((id) => {
