@@ -160,8 +160,8 @@ export function JourneyProvider({ children }) {
     : 0;
 
   // Run the core engine with current route & filters
-  const runEngine = useCallback(async (routeOverride = null, customDist = null, customFilters = null, customWeights = null) => {
-    const currentRoute = routeOverride || route;
+  const runEngine = useCallback(async (currentRouteOrOverride = null, vehicleMetersOrDist = null, customFilters = null, customWeights = null, currentTime = null) => {
+    const currentRoute = currentRouteOrOverride || route;
     const coords = currentRoute?.coordinates || currentRoute?.geometry;
     if (!coords || coords.length < 2) return;
 
@@ -173,8 +173,9 @@ export function JourneyProvider({ children }) {
         totalDistanceMeters: currentRoute.totalDistanceMeters || currentRoute.distanceMeters || computePolylineDistanceMeters(coords)
       };
 
-      const effectiveDist = (customDist !== null && customDist !== undefined) ? customDist : vehicleDistanceMeters;
+      const effectiveDist = (vehicleMetersOrDist !== null && vehicleMetersOrDist !== undefined) ? vehicleMetersOrDist : vehicleDistanceMeters;
       const effectiveFilters = customFilters || filters;
+      const effectiveTime = currentTime || departureTime;
 
       const repo = getRepository();
       const restaurants = await repo.getRestaurants({
@@ -182,14 +183,23 @@ export function JourneyProvider({ children }) {
         priceRange: effectiveFilters.budget !== 'Any' ? effectiveFilters.budget : undefined
       });
       const roadGraph = await repo.getRoadGraph();
-      const demoParams = await repo.getDemoParameters();
 
-      // Estimate vehicle node
-      const vehicleNodeId = demoParams?.vehicleNodeId || 'NODE_KALAMBOLI';
+      // Compute vehicle position directly for effectiveDist along active route
+      const currentVehicleState = interpolatePositionAlongRoute(coords, effectiveDist);
+      const currentVehiclePos = currentVehicleState?.position || coords[0];
+
+      // Dynamically select vehicle mainline node based on progress along route
+      let vehicleNodeId = 'NODE_KALAMBOLI';
+      if (effectiveDist < 15000) vehicleNodeId = 'NODE_MUMBAI_START';
+      else if (effectiveDist < 45000) vehicleNodeId = 'NODE_KALAMBOLI';
+      else if (effectiveDist < 72000) vehicleNodeId = 'NODE_KHALAPUR_HWY';
+      else if (effectiveDist < 88000) vehicleNodeId = 'NODE_KHOPOLI_HWY';
+      else if (effectiveDist < 105000) vehicleNodeId = 'NODE_LONAVALA_HWY';
+      else if (effectiveDist < 122000) vehicleNodeId = 'NODE_TALEGAON_HWY';
+      else if (effectiveDist < 140000) vehicleNodeId = 'NODE_SOMATNE_HWY';
+      else vehicleNodeId = 'NODE_PUNE_END';
+
       const highwayDurationToVehicleSeconds = Math.round(effectiveDist / 25); // ~90 km/h
-
-      // Compute actual vehicle position for this route & distance
-      const vehiclePos = interpolatePositionAlongRoute(coords, effectiveDist).position;
 
       // Read custom weights or engine config from localStorage if configured
       let parsedWeights = customWeights;
@@ -215,11 +225,11 @@ export function JourneyProvider({ children }) {
 
       const results = recommendPitstops({
         routeCoordinates: coords,
-        vehiclePosition: vehiclePos,
+        vehiclePosition: currentVehiclePos,
         restaurants,
         roadGraph,
         vehicleNodeId,
-        departureTime,
+        departureTime: effectiveTime,
         highwayDurationToVehicleSeconds,
         filters: {
           corridorMeters: corridorM,
@@ -362,7 +372,48 @@ export function JourneyProvider({ children }) {
     const updated = { ...filters, ...newFilters };
     setFilters(updated);
     if (route) {
-      runEngine(route, vehicleDistanceMeters, updated);
+      runEngine(route, vehicleDistanceMeters, updated, departureTime);
+    }
+  };
+
+  const changeDepartureTime = (newTime) => {
+    setDepartureTime(newTime);
+    if (route) {
+      runEngine(route, vehicleDistanceMeters, filters, newTime);
+    }
+  };
+
+  const updateStartPoint = async (place) => {
+    setStartPoint(place);
+    if (destinationPoint && place.name !== destinationPoint.name) {
+      try {
+        setIsLoading(true);
+        const calculatedRoute = await calculateRouteService(place.location, destinationPoint.location);
+        setRoute(calculatedRoute);
+        setVehicleDistanceMeters(0);
+        await runEngine(calculatedRoute, 0, filters, departureTime);
+      } catch (e) {
+        console.warn('Recalculating route failed on start change:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const updateDestinationPoint = async (place) => {
+    setDestinationPoint(place);
+    if (startPoint && place.name !== startPoint.name) {
+      try {
+        setIsLoading(true);
+        const calculatedRoute = await calculateRouteService(startPoint.location, place.location);
+        setRoute(calculatedRoute);
+        setVehicleDistanceMeters(0);
+        await runEngine(calculatedRoute, 0, filters, departureTime);
+      } catch (e) {
+        console.warn('Recalculating route failed on destination change:', e);
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -382,7 +433,10 @@ export function JourneyProvider({ children }) {
         destinationPoint,
         setDestinationPoint,
         departureTime,
-        setDepartureTime,
+        setDepartureTime: changeDepartureTime,
+        changeDepartureTime,
+        updateStartPoint,
+        updateDestinationPoint,
         travelMode,
         setTravelMode,
         vehicleDistanceMeters,

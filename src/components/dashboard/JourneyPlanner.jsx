@@ -34,8 +34,10 @@ export function JourneyPlanner() {
   const {
     startPoint,
     setStartPoint,
+    updateStartPoint,
     destinationPoint,
     setDestinationPoint,
+    updateDestinationPoint,
     departureTime,
     setDepartureTime,
     travelMode,
@@ -61,7 +63,7 @@ export function JourneyPlanner() {
         setValidationError('Start and destination cannot be identical.');
       } else {
         setValidationError('');
-        setStartPoint(place);
+        if (updateStartPoint) updateStartPoint(place); else setStartPoint(place);
       }
     }
   };
@@ -73,7 +75,7 @@ export function JourneyPlanner() {
         setValidationError('Start and destination cannot be identical.');
       } else {
         setValidationError('');
-        setDestinationPoint(place);
+        if (updateDestinationPoint) updateDestinationPoint(place); else setDestinationPoint(place);
       }
     }
   };

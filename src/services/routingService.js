@@ -31,9 +31,9 @@ import { getRepository, getRoutes, getRouteById } from '../data/restaurantReposi
 export async function calculateRouteService(src, dst, options = {}) {
   const result = await getRoute(src, dst, options);
   const dataSource = result.source === 'Live (OSRM/OSM)' ? 'live-osrm' : 'demo-fallback';
-  const coords = result.geometry || result.coordinates;
-  const dist = result.distanceMeters ?? result.totalDistanceMeters;
-  const dur = result.durationSeconds ?? result.totalDurationSeconds;
+  const coords = result.geometry || result.coordinates || [];
+  const dist = result.distanceMeters ?? result.totalDistanceMeters ?? 0;
+  const dur = result.durationSeconds ?? result.totalDurationSeconds ?? 0;
 
   return {
     ...result,
