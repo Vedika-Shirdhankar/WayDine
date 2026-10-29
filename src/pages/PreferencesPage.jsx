@@ -25,6 +25,13 @@ const CUISINE_OPTIONS = [
   'Coffee & Beverages'
 ];
 
+const BUDGET_TIERS = [
+  { value: '$', label: 'Low', symbol: '₹', desc: 'Under ₹300' },
+  { value: '$$', label: 'Medium', symbol: '₹₹', desc: '₹300–700' },
+  { value: '$$$', label: 'High', symbol: '₹₹₹', desc: '₹700+' },
+  { value: '$$$$', label: 'Luxury', symbol: '₹₹₹₹', desc: 'Fine Dining' }
+];
+
 const MAX_CUISINES = 4;
 
 /**
@@ -143,18 +150,25 @@ export function PreferencesPage() {
           </Field>
 
           <Field label="Budget Tier">
-            <div className="grid grid-cols-4 gap-2">
-              {['$','$$','$$$','$$$$'].map(t => (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {BUDGET_TIERS.map(t => (
                 <button
-                  key={t}
-                  onClick={() => setPrefs(p => ({ ...p, budget: t }))}
-                  className={`py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
-                    prefs.budget === t
-                      ? 'bg-accent text-background shadow-glow-accent'
-                      : 'bg-secondary border border-borderSubtle text-muted hover:text-textMain'
+                  key={t.value}
+                  type="button"
+                  onClick={() => setPrefs(p => ({ ...p, budget: t.value }))}
+                  className={`py-2 px-2 rounded-xl text-center transition-all border ${
+                    prefs.budget === t.value
+                      ? 'bg-accent text-background border-accent shadow-glow-accent'
+                      : 'bg-secondary border-borderSubtle text-muted hover:text-textMain hover:border-borderStrong'
                   }`}
                 >
-                  {t}
+                  <div className="text-xs font-bold leading-tight">{t.label}</div>
+                  <div className={`text-[10px] font-mono font-semibold ${prefs.budget === t.value ? 'text-background/90' : 'text-accent'}`}>
+                    {t.symbol}
+                  </div>
+                  <div className={`text-[9px] mt-0.5 ${prefs.budget === t.value ? 'text-background/80' : 'text-muted'}`}>
+                    {t.desc}
+                  </div>
                 </button>
               ))}
             </div>

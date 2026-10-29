@@ -16,10 +16,10 @@ import { useJourneyEngine } from '../../context/JourneyContext.jsx';
 const PRESET_PLACES = [
   { name: 'Mumbai (Eastern Express)', location: [19.0760, 72.8777] },
   { name: 'Kalamboli Interchange (KM 25)', location: [19.0144, 73.1025] },
+  { name: 'Khalapur Toll Plaza (KM 60)', location: [18.8412, 73.2845] },
   { name: 'Lonavala Ghat Overpass (KM 95)', location: [18.7525, 73.4086] },
-  { name: 'Pune (Kiwale / Wakad)', location: [18.5204, 73.8567] },
-  { name: 'San Francisco (US-101 S)', location: [37.6213, -122.3790] },
-  { name: 'Monterey Coast', location: [36.6002, -121.8947] }
+  { name: 'Talegaon Toll Plaza (KM 125)', location: [18.7235, 73.6621] },
+  { name: 'Pune (Kiwale / Wakad)', location: [18.5204, 73.8567] }
 ];
 
 export function JourneyPlanner() {

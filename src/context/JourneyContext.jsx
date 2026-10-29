@@ -217,6 +217,11 @@ export function JourneyProvider({ children }) {
       const normalized = normalizeEngineResults(results);
       setEngineResults(normalized);
 
+      // Persist computed recommendations to Supabase / Local repository
+      if (currentRoute?.id && results.eligible.length > 0) {
+        getRepository().saveRecommendations(currentRoute.id, results.eligible).catch(() => {});
+      }
+
       // Auto-select top recommendation if none selected
       if (results.eligible.length > 0) {
         if (!selectedRestaurantId || !results.eligible.some(r => r.restaurant.id === selectedRestaurantId)) {
@@ -245,6 +250,7 @@ export function JourneyProvider({ children }) {
       if (!demoRoute) throw new Error('Demo route unavailable');
 
       setRoute(demoRoute);
+      getRepository().saveRoute(demoRoute).catch(() => {});
       setStartPoint({ name: demoRoute.origin?.name || 'Mumbai', location: demoRoute.coordinates[0] });
       const lastCoord = demoRoute.coordinates[demoRoute.coordinates.length - 1];
       setDestinationPoint({ name: demoRoute.destination?.name || 'Pune', location: lastCoord });
@@ -271,6 +277,7 @@ export function JourneyProvider({ children }) {
       // Calculate route via routingService
       const calculatedRoute = await calculateRouteService(startPoint.location, destinationPoint.location);
       setRoute(calculatedRoute);
+      getRepository().saveRoute(calculatedRoute).catch(() => {});
       setDataSourceTag(calculatedRoute.dataSource === 'live-osrm' ? 'Live (OSRM)' : 'Demo fallback');
 
       addToast(`Route calculated (${(calculatedRoute.distanceMeters / 1000).toFixed(1)} km) via ${calculatedRoute.dataSource}`, 'success');
