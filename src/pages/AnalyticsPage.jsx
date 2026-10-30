@@ -285,7 +285,12 @@ export function AnalyticsPage() {
                     <tbody className="divide-y divide-borderSubtle/60">
                       {/* Overall Rank & Score */}
                       <tr className="bg-accent/5">
-                        <td className="py-3 px-4 font-bold text-accent">Overall Score & Rank</td>
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-accent">Overall Score & Rank</div>
+                          <div className="text-[10px] text-muted font-mono mt-0.5">
+                            Formula: 30% Detour + 25% Direction + 20% Access + 15% Food + 10% ETA
+                          </div>
+                        </td>
                         {compareData.map(d => (
                           <td key={d.id} className="py-3 px-4 text-center">
                             <span className="text-base font-black font-mono text-accent">
@@ -298,7 +303,12 @@ export function AnalyticsPage() {
 
                       {/* How safe is the entrance? */}
                       <tr>
-                        <td className="py-3 px-4 font-medium text-textMain">Entrance Safety (Median)</td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-textMain">Entrance Safety (Median)</div>
+                          <div className="text-[10px] text-muted font-mono mt-0.5">
+                            Rule: 🟢 Direct Ramp | 🟡 Service Road / Loop | 🔴 Median Blocked
+                          </div>
+                        </td>
                         {compareData.map(d => (
                           <td key={d.id} className="py-3 px-4 text-center">
                             <span className={`inline-block font-mono font-bold text-[10px] px-2 py-0.5 rounded-full ${
@@ -314,7 +324,12 @@ export function AnalyticsPage() {
 
                       {/* Extra driving distance */}
                       <tr>
-                        <td className="py-3 px-4 font-medium text-textMain">Extra Driving Added</td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-textMain">Extra Driving Added</div>
+                          <div className="text-[10px] text-muted font-mono mt-0.5">
+                            Dijkstra: Dist(Exit → Venue) + Dist(Venue → Rejoin) − Direct Hwy
+                          </div>
+                        </td>
                         {compareData.map(d => (
                           <td key={d.id} className="py-3 px-4 text-center font-mono font-bold text-textMain">
                             +{d.detourDist}
@@ -324,7 +339,12 @@ export function AnalyticsPage() {
 
                       {/* Extra driving time */}
                       <tr>
-                        <td className="py-3 px-4 font-medium text-textMain">Extra Travel Time</td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-textMain">Extra Travel Time</div>
+                          <div className="text-[10px] text-muted font-mono mt-0.5">
+                            Formula: Road Duration + Ramp Speed + Turn Penalties
+                          </div>
+                        </td>
                         {compareData.map(d => (
                           <td key={d.id} className="py-3 px-4 text-center font-mono text-textMain">
                             +{d.detourTime}
@@ -334,7 +354,12 @@ export function AnalyticsPage() {
 
                       {/* Legal U-Turns */}
                       <tr>
-                        <td className="py-3 px-4 font-medium text-textMain">U-Turn Required?</td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-textMain">U-Turn Required?</div>
+                          <div className="text-[10px] text-muted font-mono mt-0.5">
+                            Highway Loop Cost: +240s penalty per interchange loop
+                          </div>
+                        </td>
                         {compareData.map(d => (
                           <td key={d.id} className="py-3 px-4 text-center font-mono">
                             {d.uTurns > 0 ? (
@@ -348,7 +373,12 @@ export function AnalyticsPage() {
 
                       {/* When do you arrive? */}
                       <tr>
-                        <td className="py-3 px-4 font-medium text-textMain">Arrival Time & Meal</td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-textMain">Arrival Time & Meal</div>
+                          <div className="text-[10px] text-muted font-mono mt-0.5">
+                            Formula: ETA = Departure Time + Highway Travel + Ramp Detour
+                          </div>
+                        </td>
                         {compareData.map(d => (
                           <td key={d.id} className="py-3 px-4 text-center font-mono">
                             <span className="text-accent font-bold">{d.eta}</span>
@@ -359,7 +389,12 @@ export function AnalyticsPage() {
 
                       {/* Budget / Price */}
                       <tr>
-                        <td className="py-3 px-4 font-medium text-textMain">Price Tier</td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-textMain">Price Tier</div>
+                          <div className="text-[10px] text-muted font-mono mt-0.5">
+                            Budget: ₹ (&lt;₹300) | ₹₹ (₹300–700) | ₹₹₹ (₹700–1200) | ₹₹₹₹ (&gt;₹1500)
+                          </div>
+                        </td>
                         {compareData.map(d => (
                           <td key={d.id} className="py-3 px-4 text-center font-mono">
                             <span className="text-accent font-bold text-sm">{d.price}</span>
@@ -374,7 +409,12 @@ export function AnalyticsPage() {
 
                       {/* Drive-Thru */}
                       <tr>
-                        <td className="py-3 px-4 font-medium text-textMain">Drive-Thru Lane</td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-textMain">Drive-Thru Lane</div>
+                          <div className="text-[10px] text-muted font-mono mt-0.5">
+                            Dedicated vehicular order lane (&lt;5 min grab-and-go)
+                          </div>
+                        </td>
                         {compareData.map(d => (
                           <td key={d.id} className="py-3 px-4 text-center">
                             {d.hasDriveThru ? (
@@ -388,7 +428,12 @@ export function AnalyticsPage() {
 
                       {/* Dietary */}
                       <tr>
-                        <td className="py-3 px-4 font-medium text-textMain">Dietary Options</td>
+                        <td className="py-3 px-4">
+                          <div className="font-medium text-textMain">Dietary Options</div>
+                          <div className="text-[10px] text-muted font-mono mt-0.5">
+                            Strict dietary cross-filtering (Jain, Pure Veg, Halal, Vegan)
+                          </div>
+                        </td>
                         {compareData.map(d => (
                           <td key={d.id} className="py-3 px-4 text-center text-[11px] text-muted">
                             {d.dietary}
