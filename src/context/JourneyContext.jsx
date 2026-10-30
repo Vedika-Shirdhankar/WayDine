@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { getRepository, getRoutes } from '../data/restaurantRepository.js';
 import { calculateRouteService, getDemoRouteService } from '../services/routingService.js';
+import { fetchOsmRestaurantsAlongRoute } from '../services/osmOverpassService.js';
 import { recommendPitstops, DEFAULT_WEIGHTS } from '../engine/recommendationEngine.js';
 import { interpolatePositionAlongRoute, computePolylineDistanceMeters } from '../engine/geoUtils.js';
 import { useToast } from '../components/Toast.jsx';
@@ -139,6 +140,8 @@ export function JourneyProvider({ children }) {
   const [previewDetourRestaurantId, setPreviewDetourRestaurantId] = useState(null);
   const [compareList, setCompareList] = useState([]); // Max 5 items
   const [dataSourceTag, setDataSourceTag] = useState('Demo fallback');
+  const [isOsmFetching, setIsOsmFetching] = useState(false);
+  const [osmCount, setOsmCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isEngineCalculating, setIsEngineCalculating] = useState(false);
   const [error, setError] = useState(null);
@@ -184,11 +187,15 @@ export function JourneyProvider({ children }) {
       const effectiveTime = currentTime || departureTime;
 
       const repo = getRepository();
-      const restaurants = await repo.getRestaurants({
+      let baseRestaurants = await repo.getRestaurants({
         dietaryOption: effectiveFilters.dietaryPreference
         // Budget is NOT applied here: the repository matches price EXACTLY, which silently dropped every
         // other tier before the engine ran. The engine treats budget as a ceiling (<=) and scores it.
       });
+      let restaurants = [...baseRestaurants];
+      if (effectiveFilters.extraVenues && Array.isArray(effectiveFilters.extraVenues)) {
+        restaurants = [...restaurants, ...effectiveFilters.extraVenues];
+      }
       const roadGraph = await repo.getRoadGraph();
 
       // Compute vehicle position directly for effectiveDist along active route
@@ -440,6 +447,31 @@ export function JourneyProvider({ children }) {
     }
   };
 
+
+  const fetchLiveOsmVenues = async () => {
+    if (!route || !route.coordinates || route.coordinates.length < 2) {
+      addToast('Please select a route first to fetch live OSM venues', 'warning');
+      return;
+    }
+    setIsOsmFetching(true);
+    addToast('Querying OpenStreetMap Overpass API for real corridor venues...', 'info');
+    try {
+      const osmVenues = await fetchOsmRestaurantsAlongRoute(route.coordinates);
+      if (osmVenues.length === 0) {
+        addToast('No new venues found along this corridor in OpenStreetMap', 'info');
+      } else {
+        setOsmCount(osmVenues.length);
+        addToast(`Found ${osmVenues.length} real venues from OpenStreetMap! Re-scoring corridor...`, 'success');
+        updateFilters({ extraVenues: osmVenues });
+      }
+    } catch (err) {
+      console.error('OSM fetch error:', err);
+      addToast('Could not fetch from OpenStreetMap (Overpass API rate-limit/offline)', 'danger');
+    } finally {
+      setIsOsmFetching(false);
+    }
+  };
+
   const selectedRecommendation = useMemo(() => {
     if (!selectedRestaurantId) return engineResults.eligible[0] || null;
     return engineResults.eligible.find(r => r.restaurant.id === selectedRestaurantId) ||
@@ -487,7 +519,10 @@ export function JourneyProvider({ children }) {
         findBestPitstops,
         runEngine,
         graphSnapshot,      // live Dijkstra-working-graph for visualizer
-        vehicleHeading      // current travel bearing + compass
+        vehicleHeading,      // current travel bearing + compass
+        isOsmFetching,
+        osmCount,
+        fetchLiveOsmVenues
       }}
     >
       {children}

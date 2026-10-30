@@ -287,8 +287,8 @@ export function JourneyPlanner() {
         </div>
       </div>
 
-      {/* Prominent Action Button */}
-      <div className="pt-2">
+            {/* Prominent Action Button */}
+      <div className="pt-2 flex flex-col gap-2">
         <button
           onClick={findBestPitstops}
           disabled={isLoading || isEngineCalculating || Boolean(validationError)}
@@ -305,6 +305,22 @@ export function JourneyPlanner() {
               <span>Find Best Pitstops</span>
             </>
           )}
+        </button>
+
+        <button
+          onClick={fetchLiveOsmVenues}
+          disabled={isLoading || isOsmFetching || Boolean(validationError)}
+          className="w-full py-2 px-3 rounded-xl bg-surface border border-borderSubtle hover:border-accent text-muted hover:text-accent font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+          title="Query OpenStreetMap Overpass API for real corridor restaurants"
+        >
+          <Globe className={`w-3.5 h-3.5 ${isOsmFetching ? 'animate-spin text-accent' : ''}`} />
+          <span>
+            {isOsmFetching
+              ? 'Querying OpenStreetMap...'
+              : osmCount > 0
+                ? `OSM Live (${osmCount} Venues Loaded)`
+                : 'Fetch Live from OpenStreetMap'}
+          </span>
         </button>
       </div>
     </div>
