@@ -494,6 +494,11 @@ export function AnalyticsPage() {
                       return (
                         <td key={d.id} className="text-center py-2 px-2">
                           <span className={`font-mono font-bold text-[10px] px-1.5 py-0.5 rounded border ${cfg.bgClass}`}>{d.accessClass}</span>
+                          {d.accessClass === 'UNVERIFIED' && (
+                            <div className="text-[9px] text-muted font-normal mt-0.5 leading-tight">
+                              Off-expressway (1.2km est.)
+                            </div>
+                          )}
                         </td>
                       );
                     })}
@@ -534,6 +539,25 @@ export function AnalyticsPage() {
                   <Trash2 className="w-3 h-3" />Remove
                 </button>
               ))}
+            </div>
+            {/* Accessibility Class Quick Guide */}
+            <div className="mt-4 pt-3 border-t border-borderSubtle grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-[10px] font-mono">
+              <div className="p-2 rounded-xl bg-success/10 border border-success/30 text-success">
+                <strong className="block font-bold">🟢 GREEN</strong>
+                Direct access on carriageway (0 U-turns).
+              </div>
+              <div className="p-2 rounded-xl bg-warning/10 border border-warning/30 text-warning">
+                <strong className="block font-bold">🟡 YELLOW</strong>
+                Ramp diversion or legal U-turn.
+              </div>
+              <div className="p-2 rounded-xl bg-danger/10 border border-danger/30 text-danger">
+                <strong className="block font-bold">🔴 RED</strong>
+                Blocked by median barrier or one-way.
+              </div>
+              <div className="p-2 rounded-xl bg-secondary/80 border border-borderSubtle text-muted">
+                <strong className="block font-bold text-slate-300">⚪ UNVERIFIED</strong>
+                Off highway graph coverage (1.2 km estimate).
+              </div>
             </div>
           </>
         )}

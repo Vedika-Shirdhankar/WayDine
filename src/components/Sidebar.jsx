@@ -1,28 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NavLink, Link } from 'react-router-dom';
 import {
   Compass,
-  MapPin,
   Utensils,
   BarChart2,
   Sliders,
   Car,
   Settings,
-  SplitSquareVertical
+  Network,
+  GitBranch,
+  ChevronRight
 } from 'lucide-react';
 import { useJourneyEngine } from '../context/JourneyContext.jsx';
+import { GraphMiniVisualizer } from './GraphMiniVisualizer.jsx';
 
 export function Sidebar() {
-  const { compareList } = useJourneyEngine();
+  const { compareList, selectedRecommendation, graphSnapshot, vehicleHeading, dataSourceTag } = useJourneyEngine();
+  const [graphOpen, setGraphOpen] = useState(false);
 
   const navItems = [
-    { to: '/dashboard', label: 'Dashboard', icon: Compass },
-    { to: '/pitstops', label: 'Explore Pitstops', icon: Utensils },
-    { to: '/simulator', label: 'Simulator', icon: Car },
-    { to: '/analytics', label: 'Compare & Analytics', icon: BarChart2, badge: compareList.length > 0 ? compareList.length : null },
-    { to: '/preferences', label: 'Preferences', icon: Sliders },
-    { to: '/settings', label: 'Settings', icon: Settings }
+    { to: '/dashboard',   label: 'Dashboard',         icon: Compass },
+    { to: '/pitstops',    label: 'Explore Pitstops',  icon: Utensils },
+    { to: '/simulator',   label: 'Simulator',          icon: Car },
+    { to: '/analytics',   label: 'Compare & Analytics', icon: BarChart2,
+      badge: compareList.length > 0 ? compareList.length : null },
+    { to: '/preferences', label: 'Preferences',       icon: Sliders },
+    { to: '/settings',    label: 'Settings',           icon: Settings }
   ];
+
+  const hasGraph = graphSnapshot && graphSnapshot.nodes?.length > 0;
+  const topRec   = selectedRecommendation;
+  const accessClass = topRec?.detourResult?.accessibilityClass || topRec?.restaurant?.accessClass;
+  const accessColor = accessClass === 'GREEN'  ? 'text-success'  :
+                      accessClass === 'YELLOW' ? 'text-warning'  :
+                      accessClass === 'RED'    ? 'text-danger'   : 'text-muted';
 
   return (
     <>
@@ -79,15 +90,72 @@ export function Sidebar() {
           </nav>
         </div>
 
-        {/* Footer info */}
-        <div className="p-3 rounded-xl bg-card border border-borderSubtle text-[11px] space-y-1">
-          <div className="flex items-center justify-between text-muted font-mono text-[10px]">
-            <span>System Engine</span>
-            <span className="text-success font-bold">100% Deterministic</span>
+        {/* Bottom section */}
+        <div className="space-y-3">
+
+          {/* ── Dijkstra Graph Visualizer trigger ── */}
+          <div className="rounded-xl border border-borderSubtle overflow-hidden">
+            <div className="px-3 py-2 bg-card/40 border-b border-borderSubtle flex items-center gap-2">
+              <GitBranch className="w-3 h-3 text-purple-400 shrink-0" />
+              <span className="text-[10px] font-mono font-bold text-muted uppercase tracking-wider">Graph & Dijkstra</span>
+            </div>
+
+            {/* Mini status row */}
+            <div className="px-3 py-2 space-y-1.5">
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-muted">Nodes</span>
+                <span className="text-textMain font-bold">{graphSnapshot?.nodes?.length ?? '—'}</span>
+              </div>
+              <div className="flex items-center justify-between text-[10px] font-mono">
+                <span className="text-muted">Edges</span>
+                <span className="text-textMain font-bold">{graphSnapshot?.edges?.length ?? '—'}</span>
+              </div>
+              {vehicleHeading && (
+                <div className="flex items-center justify-between text-[10px] font-mono">
+                  <span className="text-muted">Heading</span>
+                  <span className="text-cyan-400 font-bold">{vehicleHeading.degrees}° {vehicleHeading.compass}</span>
+                </div>
+              )}
+              {accessClass && (
+                <div className="flex items-center justify-between text-[10px] font-mono">
+                  <span className="text-muted">Top pick</span>
+                  <span className={`font-bold ${accessColor}`}>{accessClass}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Click-to-open button */}
+            <button
+              id="graph-visualizer-trigger"
+              onClick={() => setGraphOpen(true)}
+              disabled={!hasGraph}
+              className={`w-full flex items-center justify-between px-3 py-2.5 text-[11px] font-bold font-mono transition-all border-t border-borderSubtle group ${
+                hasGraph
+                  ? 'text-purple-300 hover:bg-purple-500/10 hover:text-purple-200 cursor-pointer'
+                  : 'text-muted/40 cursor-not-allowed'
+              }`}
+              title={hasGraph ? 'Open live Dijkstra graph visualizer' : 'Run a journey first to build the graph'}
+            >
+              <div className="flex items-center gap-2">
+                <Network className="w-3.5 h-3.5 shrink-0" />
+                <span>{hasGraph ? 'Visualize Dijkstra' : 'Run journey first'}</span>
+              </div>
+              {hasGraph && (
+                <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              )}
+            </button>
           </div>
-          <p className="text-[10px] text-muted leading-tight">
-            Graph traversal & turn-penalized highway optimization.
-          </p>
+
+          {/* Engine status footer */}
+          <div className="p-3 rounded-xl bg-card border border-borderSubtle text-[11px] space-y-1">
+            <div className="flex items-center justify-between text-muted font-mono text-[10px]">
+              <span>System Engine</span>
+              <span className="text-success font-bold">100% Deterministic</span>
+            </div>
+            <p className="text-[10px] text-muted leading-tight">
+              Graph traversal & turn-penalized highway optimization.
+            </p>
+          </div>
         </div>
       </aside>
 
@@ -117,7 +185,20 @@ export function Sidebar() {
             </NavLink>
           );
         })}
+        {/* Mobile graph button */}
+        {hasGraph && (
+          <button
+            onClick={() => setGraphOpen(true)}
+            className="flex flex-col items-center gap-1 p-2 rounded-xl text-[10px] font-medium text-purple-400"
+          >
+            <Network className="w-5 h-5" />
+            <span>Graph</span>
+          </button>
+        )}
       </nav>
+
+      {/* Full-screen Dijkstra visualizer overlay */}
+      {graphOpen && <GraphMiniVisualizer onClose={() => setGraphOpen(false)} />}
     </>
   );
 }

@@ -1,11 +1,79 @@
 import React from 'react';
-import { X, CheckCircle, ShieldCheck, AlertTriangle, HelpCircle, Calculator, Compass, Clock, MapPin, CornerDownRight } from 'lucide-react';
+import { X, CheckCircle, ShieldCheck, AlertTriangle, Calculator, Compass, Clock, MapPin, Navigation, Utensils, Star, Heart } from 'lucide-react';
+
+function ScoreBar({ value, color = 'accent' }) {
+  return (
+    <div className="w-full bg-secondary/60 rounded-full h-1.5 mt-1">
+      <div
+        className={`h-1.5 rounded-full bg-${color} transition-all duration-700`}
+        style={{ width: `${Math.max(4, value)}%` }}
+      />
+    </div>
+  );
+}
 
 export function ScoreBreakdownModal({ recommendation, onClose }) {
   if (!recommendation) return null;
 
   const { restaurant, detourMetrics, foodSuitability, finalScore, scoreBreakdown, rank, rationale } = recommendation;
-  const detourMinutes = (detourMetrics.detourDurationSeconds / 60).toFixed(1);
+  const detourMinutes = ((detourMetrics?.detourDurationSeconds || 0) / 60).toFixed(1);
+
+  const factors = [
+    {
+      key: 'detourScore',
+      label: 'Detour Efficiency',
+      weight: '25%',
+      icon: Navigation,
+      color: 'accent',
+      value: scoreBreakdown?.detourScore ?? 0,
+      note: `+${detourMinutes}m extra drive`
+    },
+    {
+      key: 'directionScore',
+      label: 'Direction Compat.',
+      weight: '20%',
+      icon: Compass,
+      color: 'cyan-400',
+      value: scoreBreakdown?.directionScore ?? 0,
+      note: `${detourMetrics?.uTurnCount ?? 0} U-turns · ${detourMetrics?.turnCount ?? 0} turns`
+    },
+    {
+      key: 'accessScore',
+      label: 'Road Accessibility',
+      weight: '20%',
+      icon: ShieldCheck,
+      color: 'success',
+      value: scoreBreakdown?.accessScore ?? 0,
+      note: restaurant.accessClass || 'UNVERIFIED'
+    },
+    {
+      key: 'foodEtaScore',
+      label: 'Food at ETA',
+      weight: '15%',
+      icon: Utensils,
+      color: 'warning',
+      value: scoreBreakdown?.foodEtaScore ?? 0,
+      note: foodSuitability?.isOpenAtEta ? `Open · ${foodSuitability?.mealWindow || ''}` : 'Closed at ETA'
+    },
+    {
+      key: 'timeScore',
+      label: 'Time Compatibility',
+      weight: '10%',
+      icon: Clock,
+      color: 'purple-400',
+      value: scoreBreakdown?.timeScore ?? 0,
+      note: `ETA ${foodSuitability?.projectedEta || '—'}`
+    },
+    {
+      key: 'preferenceScore',
+      label: 'Preference Match',
+      weight: '10%',
+      icon: Heart,
+      color: 'pink-400',
+      value: scoreBreakdown?.preferenceScore ?? 0,
+      note: `${restaurant.rating ?? '—'} ★ · ${restaurant.priceRange ?? '—'}`
+    }
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
@@ -18,7 +86,7 @@ export function ScoreBreakdownModal({ recommendation, onClose }) {
                 Rank #{rank} Pitstop
               </span>
               <span className="text-xs font-mono text-muted bg-secondary px-2 py-0.5 rounded">
-                Source: {restaurant.source}
+                Score: {finalScore}/100
               </span>
             </div>
             <h3 className="text-xl font-black text-textMain mt-1">{restaurant.name}</h3>
@@ -35,50 +103,48 @@ export function ScoreBreakdownModal({ recommendation, onClose }) {
           </button>
         </div>
 
-        {/* Executive Rationale */}
+        {/* Rationale */}
         <div className="p-3.5 rounded-xl bg-secondary border border-borderSubtle text-xs text-textMain leading-relaxed">
           <span className="font-bold text-accent">Ranking Verdict: </span>
           {rationale}
         </div>
 
-        {/* Deterministic Scoring Table */}
+        {/* 6-Factor Scoring Grid */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="text-xs uppercase font-mono font-bold text-muted flex items-center gap-1.5">
               <Calculator className="w-3.5 h-3.5 text-accent" />
-              <span>Multi-Criteria Deterministic Scoring Breakdown</span>
+              <span>Deterministic 6-Factor Scoring</span>
             </h4>
             <div className="text-sm font-mono font-black text-accent">
-              Final Score: {finalScore} / 100
+              {finalScore} / 100
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
-            <div className="bg-secondary p-2.5 rounded-xl border border-borderSubtle">
-              <div className="text-[10px] text-muted font-mono">Detour (35%)</div>
-              <div className="text-base font-black font-mono text-textMain mt-0.5">{scoreBreakdown.detourScore}</div>
-              <div className="text-[10px] text-accent font-mono font-semibold">+{detourMinutes}m extra</div>
-            </div>
-            <div className="bg-secondary p-2.5 rounded-xl border border-borderSubtle">
-              <div className="text-[10px] text-muted font-mono">Access (25%)</div>
-              <div className="text-base font-black font-mono text-textMain mt-0.5">{scoreBreakdown.accessScore}</div>
-              <div className="text-[10px] text-success font-mono font-semibold">{restaurant.accessClass}</div>
-            </div>
-            <div className="bg-secondary p-2.5 rounded-xl border border-borderSubtle">
-              <div className="text-[10px] text-muted font-mono">Rating (15%)</div>
-              <div className="text-base font-black font-mono text-textMain mt-0.5">{scoreBreakdown.ratingScore}</div>
-              <div className="text-[10px] text-warning font-mono font-semibold">{restaurant.rating} ★</div>
-            </div>
-            <div className="bg-secondary p-2.5 rounded-xl border border-borderSubtle">
-              <div className="text-[10px] text-muted font-mono">Food ETA (15%)</div>
-              <div className="text-base font-black font-mono text-textMain mt-0.5">{scoreBreakdown.foodEtaScore}</div>
-              <div className="text-[10px] text-accent font-mono font-semibold">{foodSuitability.isOpenAtEta ? 'Open' : 'Closed'}</div>
-            </div>
-            <div className="bg-secondary p-2.5 rounded-xl border border-borderSubtle col-span-2 sm:col-span-1">
-              <div className="text-[10px] text-muted font-mono">Pref (10%)</div>
-              <div className="text-base font-black font-mono text-textMain mt-0.5">{scoreBreakdown.preferenceScore}</div>
-              <div className="text-[10px] text-muted font-mono font-semibold">{restaurant.hasDriveThru ? 'DriveThru' : 'Dine-In'}</div>
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {factors.map(f => {
+              const Icon = f.icon;
+              return (
+                <div key={f.key} className="bg-secondary p-2.5 rounded-xl border border-borderSubtle space-y-0.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1 text-[10px] text-muted font-mono">
+                      <Icon className="w-3 h-3" />
+                      <span>{f.label}</span>
+                    </div>
+                    <span className="text-[10px] font-mono text-muted">{f.weight}</span>
+                  </div>
+                  <div className="text-xl font-black font-mono text-textMain">{f.value}</div>
+                  <ScoreBar value={f.value} />
+                  <div className="text-[10px] text-muted font-mono truncate">{f.note}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Scoring formula */}
+          <div className="bg-secondary/50 border border-borderSubtle rounded-xl p-2.5 font-mono text-[10px] text-muted leading-relaxed">
+            <span className="text-accent font-bold">Score = </span>
+            (25%×Detour) + (20%×Direction) + (20%×Access) + (15%×Food) + (10%×Time) + (10%×Pref) = <span className="text-textMain font-bold">{finalScore}</span>
           </div>
         </div>
 
@@ -88,53 +154,55 @@ export function ScoreBreakdownModal({ recommendation, onClose }) {
             Algorithm Verification (Three Hackathon Tasks)
           </h4>
 
-          {/* Task 1 Proof */}
+          {/* Task A */}
           <div className="p-3 rounded-xl bg-secondary/80 border border-borderSubtle text-xs space-y-1">
             <div className="flex items-center justify-between font-bold text-textMain">
-              <span>Task 1: Corridor & Directional Filter</span>
+              <span>Task A: Corridor & Direction Filter</span>
               <span className={`px-2 py-0.5 rounded text-[10px] font-mono ${
                 restaurant.accessClass === 'GREEN' ? 'bg-success/20 text-success' : 'bg-warning/20 text-warning'
               }`}>
-                {restaurant.accessClass} Verified
+                {restaurant.accessClass || 'UNVERIFIED'}
               </span>
             </div>
             <p className="text-muted text-[11px] leading-relaxed">
-              {restaurant.accessReason || 'Corridor verified.'}
+              {restaurant.accessReason || 'Corridor verified via route polyline projection (pointToSegmentDistance).'}
             </p>
             <div className="flex gap-4 text-[10px] font-mono text-muted pt-1">
-              <span>Side of travel: <strong className="text-textMain">{restaurant.roadSide}</strong></span>
-              <span>Corridor lateral dist: <strong className="text-textMain">{restaurant.distanceFromRouteMeters}m</strong></span>
+              <span>Side: <strong className="text-textMain">{recommendation.sideOfRoad || '—'}</strong></span>
+              <span>Lateral dist: <strong className="text-textMain">{recommendation.distanceFromRouteMeters ?? '—'}m</strong></span>
+              <span>In 200m corridor: <strong className={recommendation.withinStrictCorridor ? 'text-success' : 'text-warning'}>{recommendation.withinStrictCorridor ? 'Yes' : 'No'}</strong></span>
             </div>
           </div>
 
-          {/* Task 2 Proof */}
+          {/* Task B */}
           <div className="p-3 rounded-xl bg-secondary/80 border border-borderSubtle text-xs space-y-1">
             <div className="flex items-center justify-between font-bold text-textMain">
-              <span>Task 2: Road Network Detour & Turn Minimization</span>
-              <span className="font-mono text-accent">+{detourMinutes} min extra</span>
+              <span>Task B: Road Network Detour & Turn Minimization</span>
+              <span className="font-mono text-accent">+{detourMinutes} min</span>
             </div>
             <p className="text-muted text-[11px]">
-              Round-trip detour distance: <strong>{(detourMetrics.detourDistanceMeters / 1000).toFixed(2)} km</strong> • Maneuvers: <strong>{detourMetrics.turnCount} turns</strong>, <strong>{detourMetrics.uTurnCount} U-turns</strong>.
+              Round-trip detour: <strong>{((detourMetrics?.detourDistanceMeters || 0) / 1000).toFixed(2)} km</strong> •
+              Turns: <strong>{detourMetrics?.turnCount ?? 0}</strong> •
+              U-turns: <strong>{detourMetrics?.uTurnCount ?? 0}</strong> •
+              Bearing compatibility: <strong>{scoreBreakdown?.directionScore ?? 0}/100</strong>
             </p>
-            {detourMetrics.uTurnCount > 0 && (
+            {(detourMetrics?.uTurnCount ?? 0) > 0 && (
               <p className="text-danger text-[11px] font-mono">
-                ⚠️ Severe penalty applied: {detourMetrics.uTurnCount} U-turn across median barrier adds {detourMetrics.uTurnPenaltySeconds}s penalty.
+                ⚠️ U-turn penalty applied: {detourMetrics.uTurnCount} U-turn adds {detourMetrics.uTurnPenaltySeconds}s delay.
               </p>
             )}
           </div>
 
-          {/* Task 3 Proof */}
+          {/* Task C */}
           <div className="p-3 rounded-xl bg-secondary/80 border border-borderSubtle text-xs space-y-1">
             <div className="flex items-center justify-between font-bold text-textMain">
-              <span>Task 3: ETA-Based Food Window Recommendation</span>
-              <span className="font-mono text-success">ETA {foodSuitability.projectedEta}</span>
+              <span>Task C: ETA-Based Food Window Recommendation</span>
+              <span className="font-mono text-success">ETA {foodSuitability?.projectedEta || '—'}</span>
             </div>
-            <p className="text-muted text-[11px]">
-              {foodSuitability.statusMessage}
-            </p>
+            <p className="text-muted text-[11px]">{foodSuitability?.statusMessage}</p>
             <div className="flex flex-wrap gap-1.5 pt-1">
-              <span className="text-[10px] text-muted">Active menu categories at arrival:</span>
-              {foodSuitability.availableCategoriesAtEta.map(cat => (
+              <span className="text-[10px] text-muted">Active menu at arrival:</span>
+              {(foodSuitability?.availableCategoriesAtEta || []).map(cat => (
                 <span key={cat} className="text-[10px] font-mono bg-card px-1.5 py-0.5 rounded text-accent border border-borderSubtle">
                   {cat}
                 </span>
@@ -143,7 +211,7 @@ export function ScoreBreakdownModal({ recommendation, onClose }) {
           </div>
         </div>
 
-        {/* Modal Footer */}
+        {/* Footer */}
         <div className="flex items-center justify-end pt-3 border-t border-borderSubtle">
           <button
             onClick={onClose}

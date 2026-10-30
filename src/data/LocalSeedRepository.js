@@ -158,11 +158,12 @@ export class LocalSeedRepository extends IWayDineRepository {
       requireOpenAtEta: true,
       preferredPriceRange: '$$',
       weights: {
-        detourEfficiency: 30,
-        directionCompatibility: 25,
+        detourEfficiency: 25,
+        directionCompatibility: 20,
         roadAccessibility: 20,
         foodAvailability: 15,
-        timeCompatibility: 10
+        timeCompatibility: 10,
+        preferenceMatch: 10
       }
     };
 

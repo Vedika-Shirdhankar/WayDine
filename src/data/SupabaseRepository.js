@@ -418,11 +418,12 @@ export class SupabaseRepository extends IWayDineRepository {
         requireOpenAtEta: Boolean(data.require_open_at_eta),
         preferredPriceRange: data.preferred_price_range || '$$',
         weights: data.weights || {
-          detourEfficiency: 30,
-          directionCompatibility: 25,
-          roadAccessibility: 20,
-          foodAvailability: 15,
-          timeCompatibility: 10
+          detourEfficiency: 25,
+        directionCompatibility: 20,
+        roadAccessibility: 20,
+        foodAvailability: 15,
+        timeCompatibility: 10,
+        preferenceMatch: 10
         }
       };
     } catch (err) {
@@ -453,11 +454,12 @@ export class SupabaseRepository extends IWayDineRepository {
         require_open_at_eta: Boolean(preferences.requireOpenAtEta),
         preferred_price_range: preferences.preferredPriceRange || preferences.budget || '$$',
         weights: preferences.weights || {
-          detourEfficiency: 30,
-          directionCompatibility: 25,
-          roadAccessibility: 20,
-          foodAvailability: 15,
-          timeCompatibility: 10
+          detourEfficiency: 25,
+        directionCompatibility: 20,
+        roadAccessibility: 20,
+        foodAvailability: 15,
+        timeCompatibility: 10,
+        preferenceMatch: 10
         },
         updated_at: new Date().toISOString()
       };

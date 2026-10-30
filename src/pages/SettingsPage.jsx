@@ -13,11 +13,12 @@ import { useJourneyEngine } from '../context/JourneyContext.jsx';
 // ─── Defaults ────────────────────────────────────────────────────────────────
 
 const DEFAULT_WEIGHTS = {
-  detourEfficiency: 30,
-  directionCompatibility: 25,
+  detourEfficiency: 25,
+  directionCompatibility: 20,
   roadAccessibility: 20,
   foodAvailability: 15,
   timeCompatibility: 10,
+  preferenceMatch: 10,
 };
 
 const DEFAULT_ENGINE_CONFIG = {
@@ -36,7 +37,12 @@ const DEFAULT_ENGINE_CONFIG = {
 function loadWeights() {
   try {
     const raw = localStorage.getItem('waydine_weights');
-    if (raw) return { ...DEFAULT_WEIGHTS, ...JSON.parse(raw) };
+    if (raw) {
+      const merged = { ...DEFAULT_WEIGHTS, ...JSON.parse(raw) };
+      // Weights saved before the preference factor existed no longer sum to 100 once merged.
+      const total = Object.values(merged).reduce((a, b) => a + b, 0);
+      if (total === 100) return merged;
+    }
   } catch {}
   return { ...DEFAULT_WEIGHTS };
 }
@@ -183,7 +189,8 @@ export function SettingsPage() {
     { key: 'directionCompatibility', label: 'Direction Compatibility' },
     { key: 'roadAccessibility', label: 'Road Accessibility' },
     { key: 'foodAvailability', label: 'Food Availability at ETA' },
-    { key: 'timeCompatibility', label: 'Time Compatibility' },
+    { key: 'timeCompatibility', label: 'Open at ETA' },
+    { key: 'preferenceMatch', label: 'User Preferences & Rating' },
   ];
 
   return (

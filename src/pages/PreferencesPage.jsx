@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sliders, Save, RotateCcw, CheckCircle2 } from 'lucide-react';
+import { Sliders, Save, RotateCcw, CheckCircle2, HardDrive, Cloud } from 'lucide-react';
 import { getRepository } from '../data/restaurantRepository.js';
 
 const DEFAULT_PREFS = {
@@ -40,6 +40,7 @@ const MAX_CUISINES = 4;
 export function PreferencesPage() {
   const [prefs, setPrefs] = useState(DEFAULT_PREFS);
   const [saved, setSaved] = useState(false);
+  const [saveMode, setSaveMode] = useState('local'); // 'local' | 'cloud'
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,11 +53,18 @@ export function PreferencesPage() {
   const handleSave = async () => {
     try {
       await getRepository().savePreferences('default_user', prefs);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      setSaveMode('cloud');
     } catch (err) {
-      console.error('[PreferencesPage] save failed:', err);
+      // Supabase unavailable or user not signed in — fall back to localStorage silently
+      try {
+        const stored = JSON.parse(localStorage.getItem('waydine_preferences') || '{}');
+        stored['default_user'] = prefs;
+        localStorage.setItem('waydine_preferences', JSON.stringify(stored));
+      } catch {}
+      setSaveMode('local');
     }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
   };
 
   const handleReset = () => {
@@ -250,7 +258,14 @@ export function PreferencesPage() {
             onClick={handleSave}
             className="flex-1 py-2.5 rounded-xl bg-accent hover:bg-accentHover text-background text-xs font-bold flex items-center justify-center gap-2 shadow-glow-accent transition-all"
           >
-            {saved ? <><CheckCircle2 className="w-4 h-4" />Saved!</> : <><Save className="w-4 h-4" />Save Preferences</>}
+            {saved ? (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                Saved{saveMode === 'local' ? ' locally' : ''}!
+              </>
+            ) : (
+              <><Save className="w-4 h-4" />Save Preferences</>
+            )}
           </button>
           <button
             onClick={handleReset}
@@ -259,11 +274,15 @@ export function PreferencesPage() {
             <RotateCcw className="w-4 h-4" />Reset
           </button>
         </div>
+        {/* Storage info */}
+        <p className="text-[10px] text-muted flex items-center gap-1.5 pt-1">
+          {saveMode === 'cloud'
+            ? <><Cloud className="w-3 h-3 text-accent" />Saved to your account</>
+            : <><HardDrive className="w-3 h-3 text-muted" />Saved locally in this browser (no account needed)</>
+          }
+        </p>
       </div>
 
-      <p className="text-[10px] text-muted text-center">
-        Preferences are stored in localStorage (no account required). Source: <strong>LocalSeedRepository</strong>.
-      </p>
     </div>
   );
 }

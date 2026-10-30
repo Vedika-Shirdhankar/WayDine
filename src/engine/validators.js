@@ -65,7 +65,8 @@ export function assertWeightsSumTo100(weights) {
 
   const values = Object.values(weights);
   if (values.length === 0) {
-    throw new Error('[validators] Weights object must not be empty.');
+    // Empty weights object — caller will use defaults. Silently return instead of crashing.
+    return;
   }
 
   let sum = 0;
