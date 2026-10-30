@@ -51,7 +51,10 @@ export function JourneyPlanner() {
     loadDemoJourney,
     findBestPitstops,
     isLoading,
-    isEngineCalculating
+    isEngineCalculating,
+    isOsmFetching,
+    osmCount,
+    fetchLiveOsmVenues
   } = useJourneyEngine();
 
   const [validationError, setValidationError] = useState('');
