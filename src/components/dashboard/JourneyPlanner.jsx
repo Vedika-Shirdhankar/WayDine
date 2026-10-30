@@ -270,7 +270,7 @@ export function JourneyPlanner() {
         <div>
           <label className="text-[11px] text-muted font-medium block mb-1">Budget Tier</label>
           <div className="grid grid-cols-4 gap-1.5">
-            {['$', '$$', '$$$', '$$$$'].map(tier => (
+            {['Low', 'Medium', 'High', 'Luxury'].map(tier => (
               <button
                 key={tier}
                 onClick={() => updateFilters({ budget: tier })}
