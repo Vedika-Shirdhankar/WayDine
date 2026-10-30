@@ -182,6 +182,28 @@ export class RoadNetworkGraph {
     this.forbiddenTurns.add(`${fromNode}->${viaNode}->${toNode}`);
   }
 
+  /**
+   * Deep-ish copy: nodes, edge objects and forbidden turns are copied so a caller can add
+   * inferred (synthetic) edges without mutating the shared road graph.
+   * @returns {RoadNetworkGraph}
+   */
+  clone() {
+    const copy = new RoadNetworkGraph();
+    for (const [id, node] of this.nodes) copy.nodes.set(id, { ...node });
+    for (const [id, edges] of this.adjacencyList) copy.adjacencyList.set(id, edges.map(e => ({ ...e })));
+    for (const key of this.forbiddenTurns) copy.forbiddenTurns.add(key);
+    return copy;
+  }
+
+  /** All directed edges that END at nodeId (used to explain why a node is unreachable). */
+  incomingEdges(nodeId) {
+    const result = [];
+    for (const edges of this.adjacencyList.values()) {
+      for (const e of edges) if (e.to === nodeId) result.push(e);
+    }
+    return result;
+  }
+
   findNearestNode(point, maxSearchRadiusMeters = 10000) {
     let nearestNodeId = null;
     let minDistanceMeters = Infinity;
@@ -333,3 +355,93 @@ export function dijkstra(graph, startNodeId, endNodeId, options = {}) {
 }
 
 export const dijkstraShortestPath = dijkstra;
+
+/**
+ * Single-source Dijkstra: ONE traversal from `startNodeId` produces a shortest-path tree that can be
+ * queried for any number of targets via `pathTo(id)`. This replaces running a fresh Dijkstra per
+ * (restaurant, leg). Same cost model as `dijkstra()` (turn / U-turn penalties, forbidden edges,
+ * forbidden turn triples) so both always agree.
+ *
+ * State = (node, previousNode) so forbidden "from->via->to" turns can be enforced.
+ *
+ * @param {RoadNetworkGraph} graph
+ * @param {string} startNodeId
+ * @param {Object} [options] same options as dijkstra()
+ * @returns {{ startNodeId: string, reachable: (id: string) => boolean, pathTo: (id: string) => (null | {
+ *   path: string[], edges: any[], distance: number, time: number, turns: number, uTurns: number,
+ *   distanceMeters: number, durationSeconds: number, pathNodeIds: string[], turnCount: number, uTurnCount: number
+ * }) }}
+ */
+export function dijkstraFrom(graph, startNodeId, options = {}) {
+  const empty = { startNodeId, reachable: () => false, pathTo: () => null };
+  if (!graph || !graph.nodes.has(startNodeId)) return empty;
+
+  const allowUTurns = options.allowUTurns !== false;
+  const uTurnPenalty = options.uTurnPenaltySeconds ?? MANEUVER_PENALTIES.U_TURN_PENALTY_SECONDS;
+  const turnPenalty = options.turnPenaltySeconds ?? (options.leftTurnPenaltySeconds || MANEUVER_PENALTIES.LEFT_TURN_PENALTY_SECONDS);
+
+  const bestTimes = new Map();   // stateKey -> seconds
+  const previous = new Map();    // stateKey -> { prevKey, edge }
+  const bestStateOfNode = new Map(); // nodeId -> stateKey with the lowest time
+
+  const startKey = `${startNodeId}:none`;
+  bestTimes.set(startKey, 0);
+  bestStateOfNode.set(startNodeId, startKey);
+
+  const pq = new BinaryMinHeap();
+  pq.push({ curr: startNodeId, prev: 'none', key: startKey, d: 0 }, 0);
+
+  while (!pq.isEmpty()) {
+    const { curr, prev, key, d } = pq.pop();
+    if (d > bestTimes.get(key)) continue; // stale heap entry
+
+    for (const edge of graph.adjacencyList.get(curr) || []) {
+      if (edge.isForbidden || edge.hasMedianBarrier) continue;
+      if (edge.isUTurn && !allowUTurns) continue;
+      if (prev !== 'none' && graph.forbiddenTurns.has(`${prev}->${curr}->${edge.to}`)) continue;
+      if (edge.to === prev && !allowUTurns) continue;
+
+      let w = edge.durationSeconds;
+      if (edge.isUTurn) w += uTurnPenalty;
+      if (edge.isTurn || edge.isLeftTurn) w += turnPenalty;
+
+      const nextKey = `${edge.to}:${curr}`;
+      const nd = d + w;
+      if (!bestTimes.has(nextKey) || nd < bestTimes.get(nextKey)) {
+        bestTimes.set(nextKey, nd);
+        previous.set(nextKey, { prevKey: key, edge });
+        pq.push({ curr: edge.to, prev: curr, key: nextKey, d: nd }, nd);
+        const best = bestStateOfNode.get(edge.to);
+        if (best === undefined || nd < bestTimes.get(best)) bestStateOfNode.set(edge.to, nextKey);
+      }
+    }
+  }
+
+  const pathTo = (targetId) => {
+    const targetKey = bestStateOfNode.get(targetId);
+    if (!targetKey) return null;
+    const path = [targetId];
+    const edges = [];
+    let distance = 0, turns = 0, uTurns = 0;
+    let k = targetKey;
+    while (k !== startKey) {
+      const step = previous.get(k);
+      if (!step) break;
+      edges.unshift(step.edge);
+      distance += step.edge.distanceMeters;
+      if (step.edge.isUTurn) uTurns++;
+      if (step.edge.isTurn || step.edge.isLeftTurn) turns++;
+      const [prevNode] = step.prevKey.split(':');
+      if (prevNode !== 'none') path.unshift(prevNode);
+      k = step.prevKey;
+    }
+    const time = Math.round(bestTimes.get(targetKey));
+    return {
+      path, edges, distance: Math.round(distance), time, turns, uTurns,
+      distanceMeters: Math.round(distance), durationSeconds: time, pathNodeIds: path,
+      turnCount: turns, uTurnCount: uTurns
+    };
+  };
+
+  return { startNodeId, reachable: (id) => bestStateOfNode.has(id), pathTo };
+}

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { getRepository, getRoutes } from '../data/restaurantRepository.js';
 import { calculateRouteService, getDemoRouteService } from '../services/routingService.js';
-import { recommendPitstops } from '../engine/recommendationEngine.js';
+import { recommendPitstops, DEFAULT_WEIGHTS } from '../engine/recommendationEngine.js';
 import { interpolatePositionAlongRoute, computePolylineDistanceMeters } from '../engine/geoUtils.js';
 import { useToast } from '../components/Toast.jsx';
 import { formatTimeIST } from '../utils/indiaDefaults.js';
@@ -37,14 +37,15 @@ function normalizeEngineResults(raw) {
         : `Closed at your projected ${etaStr} arrival.`
     };
 
-    // Build scoreBreakdown from scoreComponents (engine naming)
+    // Build scoreBreakdown from scoreComponents (engine naming) — labels match actual factors
     const sc = item.scoreComponents || {};
     const scoreBreakdown = {
-      detourScore:     sc.detourEfficiency      ?? 0,
-      accessScore:     sc.roadAccessibility     ?? 0,
-      ratingScore:     sc.directionCompatibility ?? 0,
-      foodEtaScore:    sc.foodAvailability       ?? 0,
-      preferenceScore: sc.timeCompatibility      ?? 0
+      detourScore:       sc.detourEfficiency      ?? 0,  // Detour Efficiency
+      directionScore:    sc.directionCompatibility ?? 0,  // Direction Compatibility (bearing + turns)
+      accessScore:       sc.roadAccessibility     ?? 0,  // Road Accessibility (GREEN/YELLOW/RED)
+      foodEtaScore:      sc.foodAvailability       ?? 0,  // Food Availability at ETA
+      timeScore:         sc.timeCompatibility      ?? 0,  // Time / Open-at-ETA
+      preferenceScore:   sc.preferenceMatch        ?? 0   // User Preferences
     };
 
     return {
@@ -106,7 +107,8 @@ export function JourneyProvider({ children }) {
   const [routesList, setRoutesList] = useState([]);
   const [startPoint, setStartPoint] = useState({ name: 'Mumbai (Eastern Express)', location: [19.0760, 72.8777] });
   const [destinationPoint, setDestinationPoint] = useState({ name: 'Pune (Kiwale / Wakad)', location: [18.5204, 73.8567] });
-  const [departureTime, setDepartureTime] = useState(() => new Date('2026-10-29T11:00:00'));
+  // Default to current time so meal windows and ETA calculations are accurate
+  const [departureTime, setDepartureTime] = useState(() => new Date());
   const [travelMode, setTravelMode] = useState('car'); // 'car' | 'express' | 'truck'
 
   // Vehicle progress simulation
@@ -127,6 +129,10 @@ export function JourneyProvider({ children }) {
     rejected: [],
     relaxationInfo: { wasRelaxed: false }
   });
+  // Live working graph snapshot — fed to the Dijkstra visualizer
+  const [graphSnapshot, setGraphSnapshot] = useState(null);
+  // Vehicle heading from engine meta
+  const [vehicleHeading, setVehicleHeading] = useState(null);
 
   // Selection & preview
   const [selectedRestaurantId, setSelectedRestaurantId] = useState(null);
@@ -179,8 +185,9 @@ export function JourneyProvider({ children }) {
 
       const repo = getRepository();
       const restaurants = await repo.getRestaurants({
-        dietaryOption: effectiveFilters.dietaryPreference,
-        priceRange: effectiveFilters.budget !== 'Any' ? effectiveFilters.budget : undefined
+        dietaryOption: effectiveFilters.dietaryPreference
+        // Budget is NOT applied here: the repository matches price EXACTLY, which silently dropped every
+        // other tier before the engine ran. The engine treats budget as a ceiling (<=) and scores it.
       });
       const roadGraph = await repo.getRoadGraph();
 
@@ -188,28 +195,29 @@ export function JourneyProvider({ children }) {
       const currentVehicleState = interpolatePositionAlongRoute(coords, effectiveDist);
       const currentVehiclePos = currentVehicleState?.position || coords[0];
 
-      // Dynamically select vehicle mainline node based on progress along route
-      let vehicleNodeId = 'NODE_KALAMBOLI';
-      if (effectiveDist < 15000) vehicleNodeId = 'NODE_MUMBAI_START';
-      else if (effectiveDist < 45000) vehicleNodeId = 'NODE_KALAMBOLI';
-      else if (effectiveDist < 72000) vehicleNodeId = 'NODE_KHALAPUR_HWY';
-      else if (effectiveDist < 88000) vehicleNodeId = 'NODE_KHOPOLI_HWY';
-      else if (effectiveDist < 105000) vehicleNodeId = 'NODE_LONAVALA_HWY';
-      else if (effectiveDist < 122000) vehicleNodeId = 'NODE_TALEGAON_HWY';
-      else if (effectiveDist < 140000) vehicleNodeId = 'NODE_SOMATNE_HWY';
-      else vehicleNodeId = 'NODE_PUNE_END';
+      // The vehicle's graph node is SNAPPED by the engine (last mainline node already passed);
+      // nothing is hardcoded per kilometre any more.
+      const vehicleNodeId = '';
 
-      const highwayDurationToVehicleSeconds = Math.round(effectiveDist / 25); // ~90 km/h
+      // Elapsed driving time at the vehicle, proportional to the route's own duration.
+      const routeTotalSeconds = activeRoute.totalDurationSeconds || currentRoute.durationSeconds || 0;
+      const highwayDurationToVehicleSeconds = routeTotalSeconds > 0 && activeRoute.totalDistanceMeters > 0
+        ? Math.round(routeTotalSeconds * Math.min(1, effectiveDist / activeRoute.totalDistanceMeters))
+        : Math.round(effectiveDist / 25);
 
-      // Read custom weights or engine config from localStorage if configured
+      // Read custom weights from localStorage — guard: ensure all 6 keys exist and sum to 100
       let parsedWeights = customWeights;
       if (!parsedWeights) {
         try {
           const rawW = localStorage.getItem('waydine_weights');
           if (rawW) {
-            const parsed = JSON.parse(rawW);
-            const total = Object.values(parsed).reduce((a, b) => a + b, 0);
-            if (total === 100) parsedWeights = parsed;
+            const stored = JSON.parse(rawW);
+            // Merge with defaults so all 6 keys are always present
+            const merged = { ...DEFAULT_WEIGHTS, ...stored };
+            const total = Object.values(merged).reduce((a, b) => a + b, 0);
+            if (Math.abs(total - 100) < 1) {
+              parsedWeights = merged;
+            }
           }
         } catch {}
       }
@@ -220,7 +228,8 @@ export function JourneyProvider({ children }) {
         if (rawC) customEngineConfig = JSON.parse(rawC);
       } catch {}
 
-      const corridorM = customEngineConfig.corridorMeters || effectiveFilters.corridorMeters || 1200;
+      // Corridor: per brief = 200m. Use 500m as candidate buffer if user hasn't set a preference.
+      const corridorM = customEngineConfig.corridorMeters || effectiveFilters.corridorMeters || 500;
       const maxDetourM = effectiveFilters.maxDetourMeters || customEngineConfig.maxDetourMeters || 2500;
 
       const results = recommendPitstops({
@@ -234,7 +243,12 @@ export function JourneyProvider({ children }) {
         filters: {
           corridorMeters: corridorM,
           maxDetourMeters: maxDetourM,
-          requiredCategory: effectiveFilters.preferredCategory !== 'All' ? effectiveFilters.preferredCategory : ''
+          requiredCategory: effectiveFilters.preferredCategory !== 'All' ? effectiveFilters.preferredCategory : '',
+          preferences: {
+            diet: effectiveFilters.dietaryPreference || '',
+            maxPrice: effectiveFilters.budget && effectiveFilters.budget !== 'Any' ? effectiveFilters.budget : '',
+            requireDriveThru: !!effectiveFilters.requireDriveThru
+          }
         },
         ...(parsedWeights ? { weights: parsedWeights } : {})
       });
@@ -242,6 +256,15 @@ export function JourneyProvider({ children }) {
       // Normalize engine output to UI-friendly shapes
       const normalized = normalizeEngineResults(results);
       setEngineResults(normalized);
+
+      // Store live graph snapshot for Dijkstra visualizer
+      if (results.meta?.graphSnapshot) {
+        setGraphSnapshot(results.meta.graphSnapshot);
+      }
+      // Store vehicle heading
+      if (results.meta?.vehicleHeading) {
+        setVehicleHeading(results.meta.vehicleHeading);
+      }
 
       // Persist computed recommendations to Supabase / Local repository
       if (activeRoute?.id && results.eligible.length > 0) {
@@ -462,7 +485,9 @@ export function JourneyProvider({ children }) {
         error,
         loadDemoJourney,
         findBestPitstops,
-        runEngine
+        runEngine,
+        graphSnapshot,      // live Dijkstra-working-graph for visualizer
+        vehicleHeading      // current travel bearing + compass
       }}
     >
       {children}

@@ -38,8 +38,13 @@ export function usePitstopEngine(activeRoute, vehicleDistanceMeters = 0) {
     return () => { mounted = false; };
   }, [activeRoute?.id]);
 
-  // Road network graph instance
-  const roadGraph = useMemo(() => getRoadGraph(), []);
+  // Road network graph instance (getRoadGraph is async: resolve it, don't memoise the Promise)
+  const [roadGraph, setRoadGraph] = useState(null);
+  useEffect(() => {
+    let mounted = true;
+    getRoadGraph().then(g => { if (mounted) setRoadGraph(g); }).catch(() => {});
+    return () => { mounted = false; };
+  }, []);
 
   // Compute recommendations
   const recommendations = useMemo(() => {
