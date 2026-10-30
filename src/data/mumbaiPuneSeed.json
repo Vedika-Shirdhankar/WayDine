@@ -1793,7 +1793,7 @@
       "address": "Sion Trombay Road, Near Eastern Freeway Exit, Chembur",
       "rating": 4.5,
       "reviewCount": 3800,
-      "priceRange": "",
+      "priceRange": "$$",
       "cuisineType": "Fast Food & Pav Bhaji",
       "categories": [
         "Dinner",
@@ -1834,7 +1834,7 @@
       "address": "Sion-Panvel Highway, Near Mankhurd Flyover",
       "rating": 4.4,
       "reviewCount": 2100,
-      "priceRange": "",
+      "priceRange": "$",
       "cuisineType": "Pure Veg & South Indian",
       "categories": [
         "Breakfast",
@@ -1875,7 +1875,7 @@
       "address": "Vashi Plaza, Sector 17, Opp Toll Concourse, Vashi",
       "rating": 4.5,
       "reviewCount": 4900,
-      "priceRange": "",
+      "priceRange": "$$",
       "cuisineType": "Pure Veg & South Indian",
       "categories": [
         "Breakfast",
@@ -1996,7 +1996,7 @@
       "address": "CBD Belapur Highway Node, Sector 11, Navi Mumbai",
       "rating": 4.3,
       "reviewCount": 1850,
-      "priceRange": "",
+      "priceRange": "$$",
       "cuisineType": "Pure Veg & Thali",
       "categories": [
         "Lunch",

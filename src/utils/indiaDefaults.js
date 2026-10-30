@@ -24,6 +24,9 @@ export const PRICE_TIER_DESC = {
  * @returns {string} e.g. '₹', '₹₹', '₹₹₹', '₹₹₹₹'
  */
 export function toRupeeTier(price) {
+  if (!price || typeof price !== 'string' || price.trim() === '') {
+    return '₹₹'; // Default to moderate budget
+  }
   return PRICE_TIER_MAP[price] || price || '₹₹';
 }
 

@@ -16,6 +16,7 @@ import { PreferencesPage } from './pages/PreferencesPage.jsx';
 import { SettingsPage } from './pages/SettingsPage.jsx';
 import { LoginPage } from './pages/LoginPage.jsx';
 import { NotFoundPage } from './pages/NotFoundPage.jsx';
+import { DijkstraLab } from './pages/DijkstraLab.jsx';
 
 /** Root app shell: providers → layout → routes */
 function AppLayout() {
@@ -34,6 +35,7 @@ function AppLayout() {
               <Route path="/analytics" element={<AnalyticsPage />} />
               <Route path="/preferences" element={<PreferencesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/dijkstra" element={<DijkstraLab />} />
               <Route path="/login" element={<LoginPage />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

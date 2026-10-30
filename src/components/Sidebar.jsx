@@ -8,7 +8,8 @@ import {
   Sliders,
   Car,
   Settings,
-  SplitSquareVertical
+  SplitSquareVertical,
+  Network
 } from 'lucide-react';
 import { useJourneyEngine } from '../context/JourneyContext.jsx';
 
@@ -21,7 +22,8 @@ export function Sidebar() {
     { to: '/simulator', label: 'Simulator', icon: Car },
     { to: '/analytics', label: 'Compare & Analytics', icon: BarChart2, badge: compareList.length > 0 ? compareList.length : null },
     { to: '/preferences', label: 'Preferences', icon: Sliders },
-    { to: '/settings', label: 'Settings', icon: Settings }
+    { to: '/settings', label: 'Settings', icon: Settings },
+    { to: '/dijkstra', label: 'Dijkstra Lab', icon: Network }
   ];
 
   return (

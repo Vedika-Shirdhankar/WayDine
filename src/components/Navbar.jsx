@@ -104,7 +104,7 @@ export function Navbar({
             }
           >
             <Cpu className="w-3.5 h-3.5" />
-            <span>Engine Lab (Judges)</span>
+            <span>Engine Lab</span>
           </NavLink>
 
           <NavLink
