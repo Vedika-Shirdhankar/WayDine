@@ -9,7 +9,8 @@ import {
   Sparkles,
   Zap,
   RotateCcw,
-  AlertCircle
+  AlertCircle,
+  Globe
 } from 'lucide-react';
 import { useJourneyEngine } from '../../context/JourneyContext.jsx';
 
